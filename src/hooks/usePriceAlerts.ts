@@ -56,7 +56,12 @@ export function usePriceAlerts(prices: PriceData[]) {
         toast(msg, { duration: 8000 });
         addNotification('price', msg);
         sendPushNotification('Price Alert Triggered', msg);
-        removeAlert(alert.id);
+        if (!alert.repeat) {
+          removeAlert(alert.id);
+        }
+      } else if (alert.repeat) {
+        // Re-arm repeating alert when price moves back
+        alerted.current.delete(alertKey);
       }
     }
   }, [prices]);

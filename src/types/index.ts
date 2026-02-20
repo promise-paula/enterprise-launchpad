@@ -58,8 +58,9 @@ export type Theme = 'light' | 'dark' | 'system';
 
 export interface PriceAlert {
   id: string;
-  symbol: 'BTC' | 'sBTC';
+  symbol: 'BTC' | 'sBTC' | 'STX';
   direction: 'above' | 'below';
   targetPrice: number;
   createdAt: string;
+  repeat?: boolean;
 }

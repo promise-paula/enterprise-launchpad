@@ -14,7 +14,7 @@ import { useDemoMode } from '@/hooks/useDemoMode';
 import { useUserPriceAlerts } from '@/hooks/useUserPriceAlerts';
 import { truncateAddress } from '@/lib/formatters';
 import { requestPushPermission } from '@/lib/pushNotification';
-import { Sun, Moon, Monitor, Copy, LogOut, Check, Bell, FlaskConical, Target, X } from 'lucide-react';
+import { Sun, Moon, Monitor, Copy, LogOut, Check, Bell, FlaskConical, Target, X, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Theme, PriceAlert } from '@/types';
@@ -36,6 +36,7 @@ export default function SettingsPage() {
   const [alertSymbol, setAlertSymbol] = useState<PriceAlert['symbol']>('BTC');
   const [alertDirection, setAlertDirection] = useState<PriceAlert['direction']>('above');
   const [alertPrice, setAlertPrice] = useState('');
+  const [alertRepeat, setAlertRepeat] = useState(false);
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
     'Notification' in window ? Notification.permission : 'denied'
   );
@@ -217,6 +218,7 @@ export default function SettingsPage() {
               <SelectContent>
                 <SelectItem value="BTC">BTC</SelectItem>
                 <SelectItem value="sBTC">sBTC</SelectItem>
+                <SelectItem value="STX">STX</SelectItem>
               </SelectContent>
             </Select>
             <Select value={alertDirection} onValueChange={(v) => setAlertDirection(v as PriceAlert['direction'])}>
@@ -235,6 +237,10 @@ export default function SettingsPage() {
               onChange={(e) => setAlertPrice(e.target.value)}
               className="flex-1 min-w-[120px]"
             />
+            <div className="flex items-center gap-2">
+              <Label className="text-sm text-muted-foreground">Repeat</Label>
+              <Switch checked={alertRepeat} onCheckedChange={setAlertRepeat} />
+            </div>
             <Button
               onClick={() => {
                 const price = parseFloat(alertPrice);
@@ -242,9 +248,10 @@ export default function SettingsPage() {
                   toast.error('Enter a valid price greater than 0');
                   return;
                 }
-                addPriceAlert({ symbol: alertSymbol, direction: alertDirection, targetPrice: price });
+                addPriceAlert({ symbol: alertSymbol, direction: alertDirection, targetPrice: price, repeat: alertRepeat });
                 setAlertPrice('');
-                toast.success(`Alert set: ${alertSymbol} ${alertDirection} $${price.toLocaleString()}`);
+                setAlertRepeat(false);
+                toast.success(`Alert set: ${alertSymbol} ${alertDirection} $${price.toLocaleString()}${alertRepeat ? ' (repeating)' : ''}`);
               }}
             >
               Add
@@ -257,11 +264,12 @@ export default function SettingsPage() {
             <div className="space-y-2">
               {priceAlerts.map((alert) => (
                 <div key={alert.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                  <span className="text-sm">
+                  <span className="text-sm flex items-center gap-2">
                     {alert.symbol} {alert.direction}{' '}
                     <span className="font-mono font-medium">
                       ${alert.targetPrice.toLocaleString()}
                     </span>
+                    {alert.repeat && <RefreshCw className="h-3 w-3 text-muted-foreground" />}
                   </span>
                   <Button
                     variant="ghost"
