@@ -1,92 +1,89 @@
 
 
-# Edit Alerts, Reset Fire Count, and End-to-End Verification
+# Fix Dashboard Deadlock, Landing Page Issues, and Pagination
 
 ## Overview
-Three items:
-1. **Verification** -- Test the repeating STX alert fire count by enabling Demo Mode, creating a repeating alert above $0.01, navigating to Dashboard, and confirming the count increments.
-2. **Edit action** -- Allow inline editing of an existing alert's symbol, direction, and target price.
-3. **Reset count** -- Add a button to zero out the fire count on repeating alerts.
+Four targeted fixes to resolve the infinite skeleton deadlock on the Dashboard, fix misleading landing page links, and add proper pagination truncation.
 
-## Part 1: Verification (manual testing after implementation)
-After implementation, I will navigate to Settings, enable Demo Mode, create a repeating STX alert above $0.01, go to Dashboard to trigger price polling, then return to Settings to confirm the fire count badge shows and increments.
+## 1. Dashboard Loading Deadlock
 
-## Part 2: Reset Fire Count
+**Problem**: When CoinGecko API fails after retries, `usePrices` sets `isLoading = false` but `prices` stays empty. The Dashboard checks `isLoading || !portfolio` which is always true (portfolio is null when prices are empty), so skeletons render forever with no way out.
 
-### `src/lib/priceAlerts.ts`
-Add a `resetFireCount(id: string)` function that sets `fireCount` to `0`, saves, and dispatches the change event.
+**Fix**:
+- Add `hasError: boolean` state to `usePrices` hook, set it to `true` in the catch block after max retries
+- Return `hasError` from the hook
+- In `Dashboard.tsx`, check for the error state and render the existing `ErrorState` component (variant `"api"`) with a retry button instead of infinite skeletons
+- Apply the same pattern to the `PriceChart` and `PortfolioChart` components if they also deadlock
 
-### `src/hooks/useUserPriceAlerts.ts`
-Expose a `resetCount` callback that calls `resetFireCount`.
+### Changes
 
-### `src/components/settings/PriceAlertsCard.tsx`
-- Accept new prop `resetCount: (id: string) => void`
-- Next to the fire count badge (`x3`), show a small ghost button with a `RotateCcw` icon that calls `resetCount(alert.id)`
-- Only visible when `fireCount > 0`
+**`src/hooks/usePrices.ts`**:
+- Add `const [hasError, setHasError] = useState(false)`
+- In the catch block (after max retries): call `setHasError(true)`
+- In the success path: call `setHasError(false)`
+- Return `hasError` in the hook's return object
 
-### `src/pages/Settings.tsx`
-Pass `resetCount` from the hook to `PriceAlertsCard`.
+**`src/pages/Dashboard.tsx`**:
+- Destructure `hasError` and `retry` from `usePrices()`
+- After the stale warning, add an early return: if `!isLoading && hasError && prices.length === 0`, render `ErrorState` with `variant="api"` and `onRetry={retry}`
+- For each stat card, change `isLoading || !portfolio` to `isLoading` only -- the error state above catches the failure case
 
-## Part 3: Edit Action
+## 2. "Learn More" Button Scroll
 
-### `src/lib/priceAlerts.ts`
-Add an `updateAlert(id: string, updates: Partial<Pick<PriceAlert, 'symbol' | 'direction' | 'targetPrice'>>)` function that finds the alert by ID, merges the updates, saves, and dispatches the change event.
+**Problem**: The "Learn More" button links to `/dashboard` -- identical to "Connect Wallet".
 
-### `src/hooks/useUserPriceAlerts.ts`
-Expose an `update` callback that calls `updateAlert`.
+**Fix in `src/pages/Index.tsx`**:
+- Add `id="features"` to the features `<section>` element
+- Change the "Learn More" button from `<Link to="/dashboard">` to a plain `<a href="#features">` that scrolls smoothly
+- Add `scroll-behavior: smooth` to the page wrapper or use `scroll-mt-20` on the section for header clearance
 
-### `src/components/settings/PriceAlertsCard.tsx`
-- Accept new prop `updateAlert: (id, updates) => void`
-- Add `editingId` state (string | null) to track which alert is being edited
-- When not editing: show current alert info with a `Pencil` icon button next to the delete button
-- When editing: replace the alert row with inline select/input controls (same as the creation form) pre-filled with current values, plus "Save" and "Cancel" buttons
-- On save: call `updateAlert(id, { symbol, direction, targetPrice })`, clear `editingId`, show success toast
-- On cancel: clear `editingId`, discard changes
+## 3. Footer Placeholder Links
 
-### `src/pages/Settings.tsx`
-Pass `update` from the hook to `PriceAlertsCard`.
+**Problem**: All three footer links (`Docs`, `GitHub`, `Twitter`) point to `href="#"`.
 
-## Technical Details
+**Fix in `src/pages/Index.tsx`**:
+- Replace with real ecosystem links:
+  - Docs: `https://docs.stacks.co`
+  - GitHub: `https://github.com/stacks-network`
+  - Twitter: `https://twitter.com/Stacks`
+- Add `target="_blank"` and `rel="noopener noreferrer"` to each
 
-### New functions in `src/lib/priceAlerts.ts`
+## 4. Pagination Ellipsis Truncation
 
-```typescript
-export function updateAlert(id: string, updates: Partial<Pick<PriceAlert, 'symbol' | 'direction' | 'targetPrice'>>) {
-  const alerts = loadAlerts();
-  const alert = alerts.find(a => a.id === id);
-  if (alert) {
-    Object.assign(alert, updates);
-    saveAlerts(alerts);
-    notifyChange();
-  }
-}
+**Problem**: `TransactionHistory.tsx` renders every page number in a loop, which overflows horizontally with large datasets.
 
-export function resetFireCount(id: string) {
-  const alerts = loadAlerts();
-  const alert = alerts.find(a => a.id === id);
-  if (alert) {
-    alert.fireCount = 0;
-    saveAlerts(alerts);
-    notifyChange();
-  }
+**Fix in `src/pages/TransactionHistory.tsx`**:
+- Replace the raw `Array.from({ length: totalPages })` loop with a helper function `getPageNumbers(current, total)` that returns a compact array like `[1, '...', 4, 5, 6, '...', 20]`
+- Logic: always show first page, last page, and up to 2 pages around the current page; insert `'...'` ellipsis for gaps
+- Render `PaginationEllipsis` for `'...'` entries and `PaginationLink` for number entries
+- Import `PaginationEllipsis` from the pagination component
+
+### Pagination helper logic
+
+```
+function getPageNumbers(current: number, total: number): (number | 'ellipsis')[] {
+  if (total <= 7) return range 1..total
+  
+  const pages: (number | 'ellipsis')[] = []
+  pages.push(1)
+  
+  if (current > 3) pages.push('ellipsis')
+  
+  for i from max(2, current-1) to min(total-1, current+1):
+    pages.push(i)
+  
+  if (current < total - 2) pages.push('ellipsis')
+  
+  pages.push(total)
+  return pages
 }
 ```
 
-### Updated PriceAlertsCard props
+## File Change Summary
 
-```typescript
-interface PriceAlertsCardProps {
-  alerts: PriceAlert[];
-  addAlert: (alert: Omit<PriceAlert, 'id' | 'createdAt'>) => PriceAlert | null;
-  removeAlert: (id: string) => void;
-  updateAlert: (id: string, updates: Partial<Pick<PriceAlert, 'symbol' | 'direction' | 'targetPrice'>>) => void;
-  resetCount: (id: string) => void;
-}
-```
-
-### File changes summary
-- **Edit**: `src/lib/priceAlerts.ts` -- add `updateAlert` and `resetFireCount`
-- **Edit**: `src/hooks/useUserPriceAlerts.ts` -- expose `update` and `resetCount`
-- **Edit**: `src/components/settings/PriceAlertsCard.tsx` -- add inline edit mode and reset button
-- **Edit**: `src/pages/Settings.tsx` -- pass new props to PriceAlertsCard
-
+| File | Change |
+|------|--------|
+| `src/hooks/usePrices.ts` | Add `hasError` state, set on failure, clear on success, return it |
+| `src/pages/Dashboard.tsx` | Import `ErrorState`, show error UI when API fails instead of infinite skeletons |
+| `src/pages/Index.tsx` | "Learn More" scrolls to `#features`, add `id` to features section, update footer links to real URLs |
+| `src/pages/TransactionHistory.tsx` | Add `getPageNumbers` helper, import `PaginationEllipsis`, render truncated pagination |
