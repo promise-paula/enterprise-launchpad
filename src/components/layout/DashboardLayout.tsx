@@ -16,6 +16,7 @@ import {
   Wallet,
   LayoutDashboard,
   Clock,
+  Bell,
   Settings,
 } from 'lucide-react';
 
@@ -23,6 +24,7 @@ import {
 const navItems = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'History', url: '/dashboard/history', icon: Clock },
+  { title: 'Alerts', url: '/dashboard/notifications', icon: Bell },
   { title: 'Settings', url: '/settings', icon: Settings },
 ];
 

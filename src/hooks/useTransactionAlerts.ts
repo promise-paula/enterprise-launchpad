@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useTransactions } from '@/hooks/useTransactions';
 import { getNotificationPreferences } from '@/hooks/useNotificationPreferences';
+import { addNotification } from '@/lib/notificationHistory';
 import { formatTokenAmount } from '@/lib/formatters';
 import { toast } from 'sonner';
 
@@ -31,16 +32,16 @@ export function useTransactionAlerts() {
       if (tx.status === 'confirmed' && prevPending.current.has(tx.id)) {
         prevPending.current.delete(tx.id);
         const action = tx.type === 'send' ? 'Sent' : tx.type === 'receive' ? 'Received' : 'Swapped';
-        toast.success(`Transaction confirmed: ${action} ${formatTokenAmount(tx.amount, tx.token === 'STX' ? 2 : 8)} ${tx.token}`, {
-          duration: 6000,
-        });
+        const msg = `Transaction confirmed: ${action} ${formatTokenAmount(tx.amount, tx.token === 'STX' ? 2 : 8)} ${tx.token}`;
+        toast.success(msg, { duration: 6000 });
+        addNotification('transaction', msg);
       }
 
       // Brand new receive transaction
       if (tx.type === 'receive' && !knownIds.current.has(tx.id)) {
-        toast.success(`Received ${formatTokenAmount(tx.amount, tx.token === 'STX' ? 2 : 8)} ${tx.token}`, {
-          duration: 6000,
-        });
+        const msg2 = `Received ${formatTokenAmount(tx.amount, tx.token === 'STX' ? 2 : 8)} ${tx.token}`;
+        toast.success(msg2, { duration: 6000 });
+        addNotification('transaction', msg2);
       }
 
       knownIds.current.add(tx.id);

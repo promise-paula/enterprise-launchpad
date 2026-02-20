@@ -9,6 +9,7 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import TransactionHistory from "./pages/TransactionHistory";
 import Settings from "./pages/Settings";
+import NotificationHistory from "./pages/NotificationHistory";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/history" element={<TransactionHistory />} />
+            <Route path="/dashboard/notifications" element={<NotificationHistory />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<NotFound />} />
