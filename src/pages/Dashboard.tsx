@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,9 @@ import { usePortfolio } from '@/hooks/usePortfolio';
 import { useSbtcBalance } from '@/hooks/useSbtcBalance';
 import { usePrices } from '@/hooks/usePrices';
 import { useTransactions } from '@/hooks/useTransactions';
+import { usePriceFlash } from '@/hooks/usePriceFlash';
 import { formatUsd, formatTokenAmount, formatChangePercent, formatRelativeTime, truncateAddress } from '@/lib/formatters';
+import { AnimatedNumber } from '@/components/AnimatedNumber';
 import { PriceChart } from '@/components/dashboard/PriceChart';
 import { StaggerContainer } from '@/components/layout/StaggerContainer';
 import { StaggerItem } from '@/components/layout/StaggerItem';
@@ -55,11 +58,21 @@ const TOKEN_ICONS: Record<string, string> = {
 type SortColumn = 'token' | 'balance' | 'value' | 'change';
 type SortDir = 'asc' | 'desc';
 
+const txContainerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.05 } },
+};
+const txItemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' as const } },
+};
+
 export default function Dashboard() {
   const { portfolio, isLoading: portLoading } = usePortfolio();
   const { sbtcBalance, isLoading: sbtcLoading } = useSbtcBalance();
   const { prices, isLoading: priceLoading, isStale } = usePrices();
   const { transactions, isLoading: txLoading } = useTransactions();
+  const { getFlashClass, getFlashKey } = usePriceFlash(prices);
 
   const [sortCol, setSortCol] = useState<SortColumn>('value');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -131,7 +144,9 @@ export default function Dashboard() {
             <Card className="glass-card gradient-card sm:col-span-2 lg:col-span-1 h-full">
               <CardContent className="p-6" aria-live="polite" aria-busy={isLoading}>
                 <p className="text-sm text-muted-foreground mb-1">Total Value</p>
-                <p className="text-3xl font-bold font-mono">{formatUsd(portfolio.totalValue)}</p>
+                <p className="text-3xl font-bold font-mono">
+                  <AnimatedNumber value={portfolio.totalValue} formatter={formatUsd} />
+                </p>
                 <div className="flex items-center gap-2 mt-2">
                   <Badge className={portfolio.changePercent24h >= 0 ? 'bg-success/15 text-success border-success/30' : 'bg-destructive/15 text-destructive border-destructive/30'}>
                     {portfolio.changePercent24h >= 0 ? <TrendingUp className="mr-1 h-3 w-3" /> : <TrendingDown className="mr-1 h-3 w-3" />}
@@ -156,7 +171,9 @@ export default function Dashboard() {
               <CardContent className="p-6">
                 <p className="text-sm text-muted-foreground mb-1">sBTC Balance</p>
                 <p className="text-2xl font-bold font-mono">{formatTokenAmount(sbtcBalance.balance)}</p>
-                <p className="text-sm text-muted-foreground">{formatUsd(sbtcBalance.balanceUsd)}</p>
+                <p key={getFlashKey('sBTC')} className={`text-sm text-muted-foreground ${getFlashClass('sBTC')}`}>
+                  {formatUsd(sbtcBalance.balanceUsd)}
+                </p>
                 <Badge className={sbtcBalance.changePercent24h >= 0 ? 'bg-success/15 text-success border-success/30 mt-2' : 'bg-destructive/15 text-destructive border-destructive/30 mt-2'}>
                   {formatChangePercent(sbtcBalance.changePercent24h)}
                 </Badge>
@@ -173,7 +190,9 @@ export default function Dashboard() {
             <Card className="glass-card h-full">
               <CardContent className="p-6" aria-live="polite">
                 <p className="text-sm text-muted-foreground mb-1">Bitcoin</p>
-                <p className="text-2xl font-bold font-mono">{formatUsd(btc.price)}</p>
+                <p key={getFlashKey('BTC')} className={`text-2xl font-bold font-mono ${getFlashClass('BTC')}`}>
+                  {formatUsd(btc.price)}
+                </p>
                 <Badge className={btc.changePercent24h >= 0 ? 'bg-success/15 text-success border-success/30 mt-2' : 'bg-destructive/15 text-destructive border-destructive/30 mt-2'}>
                   {formatChangePercent(btc.changePercent24h)}
                 </Badge>
@@ -190,7 +209,9 @@ export default function Dashboard() {
             <Card className="glass-card h-full">
               <CardContent className="p-6" aria-live="polite">
                 <p className="text-sm text-muted-foreground mb-1">Stacks</p>
-                <p className="text-2xl font-bold font-mono">{formatUsd(stx.price)}</p>
+                <p key={getFlashKey('STX')} className={`text-2xl font-bold font-mono ${getFlashClass('STX')}`}>
+                  {formatUsd(stx.price)}
+                </p>
                 <Badge className={stx.changePercent24h >= 0 ? 'bg-success/15 text-success border-success/30 mt-2' : 'bg-destructive/15 text-destructive border-destructive/30 mt-2'}>
                   {formatChangePercent(stx.changePercent24h)}
                 </Badge>
@@ -220,7 +241,6 @@ export default function Dashboard() {
                   {[1, 2].map(i => <Skeleton key={i} className="h-12 w-full" />)}
                 </div>
               ) : sortedHoldings.length === 0 ? (
-                /* Empty state */
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="h-14 w-14 rounded-full bg-muted/50 flex items-center justify-center mb-4">
                     <Coins className="h-7 w-7 text-muted-foreground" />
@@ -325,11 +345,20 @@ export default function Dashboard() {
                   {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full" />)}
                 </div>
               ) : (
-                <div className="space-y-2">
+                <motion.div
+                  className="space-y-2"
+                  variants={txContainerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {transactions.slice(0, 10).map(tx => {
                     const Icon = txIcon[tx.type];
                     return (
-                      <div key={tx.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors">
+                      <motion.div
+                        key={tx.id}
+                        variants={txItemVariants}
+                        className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors"
+                      >
                         <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${txColor[tx.type]} bg-current/10`}>
                           <Icon className="h-4 w-4" />
                         </div>
@@ -350,10 +379,10 @@ export default function Dashboard() {
                           </p>
                           <p className="text-xs text-muted-foreground">{formatRelativeTime(tx.timestamp)}</p>
                         </div>
-                      </div>
+                      </motion.div>
                     );
                   })}
-                </div>
+                </motion.div>
               )}
             </CardContent>
           </Card>
