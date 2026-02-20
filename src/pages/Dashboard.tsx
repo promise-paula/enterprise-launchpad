@@ -56,7 +56,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <NotificationProvider />
+      <NotificationProvider prices={prices} />
       <h1 className="text-2xl font-bold">Portfolio</h1>
 
       {/* Top stat cards */}
