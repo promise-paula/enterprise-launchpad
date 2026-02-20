@@ -11,17 +11,20 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, Clock, Settings } from 'lucide-react';
+import { LayoutDashboard, Clock, Bell, Settings } from 'lucide-react';
+import { getUnreadCount } from '@/lib/notificationHistory';
 
 const items = [
   { title: 'Portfolio', url: '/dashboard', icon: LayoutDashboard },
   { title: 'History', url: '/dashboard/history', icon: Clock },
+  { title: 'Notifications', url: '/dashboard/notifications', icon: Bell },
   { title: 'Settings', url: '/settings', icon: Settings },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
+  const unread = getUnreadCount();
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border/50">
@@ -47,6 +50,11 @@ export function AppSidebar() {
                     >
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
+                      {item.title === 'Notifications' && unread > 0 && !collapsed && (
+                        <span className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
+                          {unread}
+                        </span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { getNotificationPreferences } from '@/hooks/useNotificationPreferences';
+import { addNotification } from '@/lib/notificationHistory';
 import { toast } from 'sonner';
 import type { PriceData } from '@/types';
 
@@ -20,9 +21,9 @@ export function usePriceAlerts(prices: PriceData[]) {
         alerted.current.add(key);
         const direction = p.changePercent24h >= 0 ? 'up' : 'down';
         const emoji = direction === 'up' ? '📈' : '📉';
-        toast(`${emoji} ${p.symbol} is ${direction} ${abs.toFixed(1)}% in the last 24h`, {
-          duration: 8000,
-        });
+        const msg = `${emoji} ${p.symbol} is ${direction} ${abs.toFixed(1)}% in the last 24h`;
+        toast(msg, { duration: 8000 });
+        addNotification('price', msg);
       } else if (abs < priceThreshold) {
         // Reset so it can alert again if it crosses back
         alerted.current.delete(`${p.symbol}-up`);
