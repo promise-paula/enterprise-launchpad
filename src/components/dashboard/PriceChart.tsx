@@ -5,10 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePrices } from '@/hooks/usePrices';
 import { fetchMarketChart } from '@/lib/coingecko';
+import { ErrorState } from '@/components/ErrorState';
 import type { TimeInterval } from '@/types';
 import type { MarketChartPoint } from '@/lib/coingecko';
 import { formatUsd } from '@/lib/formatters';
-import { toast } from 'sonner';
 import {
   AreaChart,
   Area,
@@ -40,9 +40,11 @@ export function PriceChart() {
   const { isLive, isStale } = usePrices();
   const [chartData, setChartData] = useState<MarketChartPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<'api' | 'rate-limited' | null>(null);
 
   const loadChart = useCallback(async (intv: TimeInterval) => {
     setLoading(true);
+    setError(null);
     try {
       const days = intv === '1H' ? 1 : intervalToDays[intv];
       let data = await fetchMarketChart('bitcoin', days);
@@ -51,8 +53,10 @@ export function PriceChart() {
         data = data.filter(p => p.timestamp >= cutoff);
       }
       setChartData(data);
-    } catch {
-      toast.error('Failed to load chart data');
+      setError(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      setError(msg.includes('Rate limited') ? 'rate-limited' : 'api');
     } finally {
       setLoading(false);
     }
@@ -100,8 +104,19 @@ export function PriceChart() {
       <CardContent>
         {loading ? (
           <Skeleton className="h-[300px] w-full" />
+        ) : error && chartData.length === 0 ? (
+          <ErrorState
+            variant={error}
+            onRetry={() => loadChart(interval)}
+          />
         ) : (
-          <ResponsiveContainer width="100%" height={300}>
+          <>
+            {error && chartData.length > 0 && (
+              <Badge variant="outline" className="mb-2 text-[10px] border-warning/50 text-warning">
+                ⚠ Chart data may be outdated
+              </Badge>
+            )}
+            <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={displayData}>
               <defs>
                 <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
@@ -148,7 +163,8 @@ export function PriceChart() {
                 fill="url(#priceGrad)"
               />
             </AreaChart>
-          </ResponsiveContainer>
+            </ResponsiveContainer>
+          </>
         )}
       </CardContent>
     </Card>
