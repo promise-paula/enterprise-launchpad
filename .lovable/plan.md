@@ -1,71 +1,47 @@
 
 
-# sBTC Portfolio Tracker — Phase 1: Core UI & Design System
+# Smooth Page Transitions & Staggered Card Animations
 
 ## Overview
-Build the foundational UI for a production-grade sBTC portfolio tracker with a polished design system, landing page, and dashboard layout — all powered by realistic mock data, ready for live API integration later.
+Add framer-motion to the project for polished route transition animations and staggered entrance animations on dashboard cards, giving the app a premium, enterprise-grade feel.
 
----
+## 1. Install framer-motion
+- Add `framer-motion` as a dependency
 
-## 1. Design System Setup
-- **Custom color palette**: Stacks Purple (#5546FF) as primary, Bitcoin Orange (#F7931A) as accent, plus success/warning/destructive colors per PRD spec
-- **Typography**: Inter font for headings/body, JetBrains Mono for addresses and numbers
-- **Dark/Light theme**: Full theme toggle with CSS variables matching the PRD's light and dark palettes
-- **Custom component variants**: Glass cards, gradient cards, interactive hover-lift cards, stat cards with change indicators (green/red badges)
-- **Animation system**: Fade-in, slide-up, shimmer skeletons, hover effects, and subtle micro-interactions
+## 2. Page Transition Wrapper
+- Create `src/components/layout/PageTransition.tsx` — a reusable wrapper using framer-motion's `motion.div` with fade + slight slide-up on enter, fade-out on exit
+- Wrap the `<Outlet />` in `DashboardLayout.tsx` with `<AnimatePresence mode="wait">` keyed by `location.pathname` so route changes animate smoothly
+- Wrap the landing page (`Index.tsx`) content similarly
 
-## 2. Landing Page
-- **Hero section** with headline "Track Your sBTC Portfolio", subheadline, and prominent "Connect Wallet" CTA with a subtle pulse glow animation
-- **Features grid** showcasing Portfolio Analytics, DeFi Positions, and Multi-Wallet Support with icons and descriptions
-- **Live stats section** displaying BTC and STX prices (mock data) — visible even without wallet connection
-- **Footer** with copyright, doc/GitHub/Twitter links, and version number
-- Background: subtle purple-to-orange gradient at low opacity
+## 3. Staggered Card Entrance on Dashboard
+- Create `src/components/layout/StaggerContainer.tsx` and `StaggerItem.tsx` using framer-motion's `staggerChildren` variant pattern
+- Wrap the stat cards grid in `Dashboard.tsx` with `StaggerContainer`, and each card with `StaggerItem` so they fade/slide in one after another with a ~0.08s stagger delay
+- Apply the same stagger pattern to the Holdings and Recent Transactions sections
 
-## 3. Dashboard Layout & Navigation
-- **Fixed header** (64px) with logo, theme toggle, network badge (Mainnet/Testnet), and wallet status indicator
-- **Collapsible sidebar** (240px expanded / 64px collapsed) for desktop navigation
-- **Mobile-responsive layout**: Bottom navigation or hamburger menu on small screens
-- **Route structure**: `/` (landing), `/dashboard` (main view), `/dashboard/history` (transactions), `/settings`
+## 4. Micro-interaction Enhancements
+- Replace the CSS `hover-lift` class on cards with framer-motion's `whileHover={{ y: -4, boxShadow: "..." }}` for smoother, GPU-accelerated hover animations
+- Add subtle scale-on-tap (`whileTap={{ scale: 0.98 }}`) to interactive cards and buttons in the dashboard
 
-## 4. Portfolio Dashboard (Mock Data)
-- **Portfolio Value Hero Card**: Large dollar amount, 24h change ($ and %), last updated timestamp
-- **sBTC Balance Card**: Balance displayed with 8-decimal precision, USD value, 24h change badge
-- **BTC & STX Price Cards**: Current price, 24h change percentage, mini sparkline charts
-- **Price Chart**: Interactive line chart (Recharts) with 1H/24H/7D/30D time interval selector, gradient fill, and tooltips
-- **Holdings Table**: Sortable columns (Token, Balance, Value, 24h Change), token icons, mobile card-view fallback
-- **Recent Transactions**: Last 10 transactions with type icons (↑ sent, ↓ received, ↔ swap), relative timestamps, status badges (Pending/Confirmed), and "View All" link
-- **Loading skeletons** for every component with shimmer animation
+## 5. Landing Page Polish
+- Stagger the hero headline, subheadline, and CTA button entrance
+- Stagger the feature cards grid entrance as the user scrolls or on mount
 
-## 5. Mock Data & Placeholder Hooks
-- Create mock hooks (`useWallet`, `usePrices`, `useSbtcBalance`, `usePortfolio`, `useTransactions`) matching the PRD's TypeScript interfaces exactly
-- Include sample data from the PRD appendix (portfolio value $12,500, BTC at $97,200, etc.)
-- Simulate loading states (300ms minimum display) and configurable error states
-- Utility formatters: `formatUsd`, `formatTokenAmount`, `truncateAddress`, `formatRelativeTime`
+## Technical Details
 
-## 6. Settings Page
-- **Appearance**: Theme toggle (Light/Dark/System)
-- **Network**: Mainnet/Testnet selector
-- **Wallet**: Connected address display with copy button, disconnect button
-- All preferences persisted in localStorage
+**Files to create:**
+- `src/components/layout/PageTransition.tsx` — motion wrapper with enter/exit variants
+- `src/components/layout/StaggerContainer.tsx` — parent container with staggerChildren orchestration
+- `src/components/layout/StaggerItem.tsx` — child item with individual animation variants
 
-## 7. Error & Empty States
-- **Empty states** for no balance ("No sBTC yet" + Get sBTC link), no transactions, new wallet welcome
-- **Error states** with user-friendly messages, retry buttons, and appropriate icons
-- **Offline banner** when connection is lost, showing cached data
+**Files to modify:**
+- `src/components/layout/DashboardLayout.tsx` — add AnimatePresence around Outlet, keyed by location
+- `src/pages/Dashboard.tsx` — wrap card grids and sections with StaggerContainer/StaggerItem
+- `src/pages/Index.tsx` — add staggered entrance to hero and feature sections
+- `src/index.css` — remove the CSS-based `animate-fade-in` and `animate-slide-up` usages that will be replaced by framer-motion equivalents (keep the keyframes for non-framer usage)
 
-## 8. Accessibility & Polish
-- WCAG 2.1 AA compliance: proper ARIA labels, keyboard navigation, focus indicators
-- Screen reader live regions for value updates and errors
-- Skip-to-content link, logical tab order
-- 44px minimum touch targets on mobile
-- Semantic HTML structure with proper heading hierarchy
-
----
-
-## What's Next (Future Phases)
-After this foundation is solid, we can layer on:
-- **Phase 2**: Live API integration (CoinGecko prices, Stacks/Hiro blockchain data, wallet connection via @stacks/connect)
-- **Phase 3**: Transaction History page with filters, search, pagination, CSV export
-- **Phase 4**: DeFi Position Tracking (ALEX, Zest, BitFlow, StackingDAO)
-- **Phase 5**: Multi-wallet watch mode, portfolio analytics, alerts
+**Animation specs:**
+- Page transition: 0.3s ease-out, fade + translateY(12px -> 0)
+- Card stagger: 0.08s delay between items, 0.4s duration each
+- Hover lift: translateY(-4px) over 0.2s
+- Exit: 0.2s fade-out
 
