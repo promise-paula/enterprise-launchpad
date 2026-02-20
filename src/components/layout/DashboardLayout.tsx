@@ -20,7 +20,9 @@ import {
   Clock,
   Bell,
   Settings,
+  FlaskConical,
 } from 'lucide-react';
+import { useDemoMode } from '@/hooks/useDemoMode';
 
 // Bottom nav items for mobile
 const navItems = [
@@ -34,6 +36,7 @@ export default function DashboardLayout() {
   const { theme, setTheme } = useTheme();
   const { network } = useNetwork();
   const { wallet } = useWallet();
+  const { demoMode } = useDemoMode();
   const location = useLocation();
 
   return (
@@ -77,6 +80,16 @@ export default function DashboardLayout() {
               >
                 {network === 'mainnet' ? 'Mainnet' : 'Testnet'}
               </Badge>
+
+              {demoMode && (
+                <Badge
+                  variant="outline"
+                  className="border-warning/40 text-warning text-xs animate-pulse-glow"
+                >
+                  <FlaskConical className="mr-1 h-3 w-3" />
+                  Demo Mode
+                </Badge>
+              )}
 
               <Button
                 variant="ghost"
