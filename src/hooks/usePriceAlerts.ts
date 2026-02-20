@@ -1,10 +1,9 @@
 import { useEffect, useRef } from 'react';
-import { usePrices } from '@/hooks/usePrices';
 import { getNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { toast } from 'sonner';
+import type { PriceData } from '@/types';
 
-export function usePriceAlerts() {
-  const { prices } = usePrices();
+export function usePriceAlerts(prices: PriceData[]) {
   const alerted = useRef<Set<string>>(new Set());
 
   useEffect(() => {
