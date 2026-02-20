@@ -1,6 +1,4 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
-import { PageTransition } from '@/components/layout/PageTransition';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useTheme } from '@/hooks/useTheme';
@@ -85,11 +83,7 @@ export default function DashboardLayout() {
 
           {/* Main content */}
           <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6">
-            <AnimatePresence mode="wait">
-              <PageTransition key={location.pathname}>
-                <Outlet />
-              </PageTransition>
-            </AnimatePresence>
+            <Outlet />
           </main>
 
           {/* Mobile Bottom Nav */}
