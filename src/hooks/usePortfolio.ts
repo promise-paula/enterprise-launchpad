@@ -1,42 +1,56 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import type { PortfolioData } from '@/types';
+import { usePrices } from './usePrices';
 
-const MOCK_PORTFOLIO: PortfolioData = {
-  totalValue: 12500,
-  change24h: 320.50,
-  changePercent24h: 2.63,
-  lastUpdated: new Date(),
-  holdings: [
-    {
-      token: 'sBTC',
-      symbol: 'sBTC',
-      balance: 0.12856700,
-      value: 12489.10,
-      change24h: 1.26,
-      changePercent24h: 1.26,
-    },
-    {
-      token: 'Stacks',
-      symbol: 'STX',
-      balance: 2450.50,
-      value: 4533.43,
-      change24h: 3.93,
-      changePercent24h: 3.93,
-    },
-  ],
+const MOCK_BALANCES = {
+  sBTC: 0.12856700,
+  STX: 2450.50,
 };
 
 export function usePortfolio() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [portfolio, setPortfolio] = useState<PortfolioData | null>(null);
+  const { prices, isLoading } = usePrices();
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setPortfolio(MOCK_PORTFOLIO);
-      setIsLoading(false);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
+  const portfolio = useMemo<PortfolioData | null>(() => {
+    if (!prices.length) return null;
+
+    const sbtcPrice = prices.find(p => p.symbol === 'sBTC');
+    const stxPrice = prices.find(p => p.symbol === 'STX');
+    if (!sbtcPrice || !stxPrice) return null;
+
+    const sbtcValue = MOCK_BALANCES.sBTC * sbtcPrice.price;
+    const stxValue = MOCK_BALANCES.STX * stxPrice.price;
+    const totalValue = sbtcValue + stxValue;
+
+    const sbtcChange = sbtcValue * (sbtcPrice.changePercent24h / 100);
+    const stxChange = stxValue * (stxPrice.changePercent24h / 100);
+    const change24h = sbtcChange + stxChange;
+    const changePercent24h = totalValue > 0 ? (change24h / (totalValue - change24h)) * 100 : 0;
+
+    return {
+      totalValue,
+      change24h,
+      changePercent24h,
+      lastUpdated: new Date(),
+      holdings: [
+        {
+          token: 'sBTC',
+          symbol: 'sBTC',
+          balance: MOCK_BALANCES.sBTC,
+          value: sbtcValue,
+          change24h: sbtcPrice.changePercent24h,
+          changePercent24h: sbtcPrice.changePercent24h,
+        },
+        {
+          token: 'Stacks',
+          symbol: 'STX',
+          balance: MOCK_BALANCES.STX,
+          value: stxValue,
+          change24h: stxPrice.changePercent24h,
+          changePercent24h: stxPrice.changePercent24h,
+        },
+      ],
+    };
+  }, [prices]);
 
   return { portfolio, isLoading };
 }
