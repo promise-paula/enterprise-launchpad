@@ -47,3 +47,23 @@ export function incrementFireCount(id: string) {
     notifyChange();
   }
 }
+
+export function updateAlert(id: string, updates: Partial<Pick<PriceAlert, 'symbol' | 'direction' | 'targetPrice'>>) {
+  const alerts = loadAlerts();
+  const alert = alerts.find(a => a.id === id);
+  if (alert) {
+    Object.assign(alert, updates);
+    saveAlerts(alerts);
+    notifyChange();
+  }
+}
+
+export function resetFireCount(id: string) {
+  const alerts = loadAlerts();
+  const alert = alerts.find(a => a.id === id);
+  if (alert) {
+    alert.fireCount = 0;
+    saveAlerts(alerts);
+    notifyChange();
+  }
+}

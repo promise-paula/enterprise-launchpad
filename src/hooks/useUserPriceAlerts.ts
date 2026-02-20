@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { loadAlerts, addAlert, removeAlert } from '@/lib/priceAlerts';
+import { loadAlerts, addAlert, removeAlert, updateAlert, resetFireCount } from '@/lib/priceAlerts';
 import type { PriceAlert } from '@/types';
 
 export function useUserPriceAlerts() {
@@ -19,5 +19,13 @@ export function useUserPriceAlerts() {
     removeAlert(id);
   }, []);
 
-  return { alerts, add, remove };
+  const update = useCallback((id: string, updates: Partial<Pick<PriceAlert, 'symbol' | 'direction' | 'targetPrice'>>) => {
+    updateAlert(id, updates);
+  }, []);
+
+  const resetCount = useCallback((id: string) => {
+    resetFireCount(id);
+  }, []);
+
+  return { alerts, add, remove, update, resetCount };
 }

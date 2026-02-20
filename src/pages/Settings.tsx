@@ -20,7 +20,7 @@ export default function SettingsPage() {
   const { wallet, disconnect } = useWallet();
   const { prefs, update: updatePrefs } = useNotificationPreferences();
   const { demoMode, setDemoMode } = useDemoMode();
-  const { alerts: priceAlerts, add: addPriceAlert, remove: removePriceAlert } = useUserPriceAlerts();
+  const { alerts: priceAlerts, add: addPriceAlert, remove: removePriceAlert, update: updatePriceAlert, resetCount: resetPriceAlertCount } = useUserPriceAlerts();
   const supportsPush = 'Notification' in window;
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
     supportsPush ? Notification.permission : 'denied'
@@ -54,7 +54,7 @@ export default function SettingsPage() {
         pushPermission={pushPermission}
         onPushToggle={handlePushToggle}
       />
-      <PriceAlertsCard alerts={priceAlerts} addAlert={addPriceAlert} removeAlert={removePriceAlert} />
+      <PriceAlertsCard alerts={priceAlerts} addAlert={addPriceAlert} removeAlert={removePriceAlert} updateAlert={updatePriceAlert} resetCount={resetPriceAlertCount} />
       <WalletCard wallet={wallet} disconnect={disconnect} />
     </div>
   );
