@@ -1,24 +1,48 @@
 
+# Notifications System: Price Alerts and Transaction Confirmations
 
-# Fix 1H Chart Interval Rate Limiting
-
-## Problem
-The 1H interval makes a separate CoinGecko API call with `days=0.042`, which often gets rate-limited (HTTP 429) when users switch between intervals quickly.
-
-## Solution
-Instead of making a separate API call for 1H, fetch the 24H data and filter it to the last hour. The 24H endpoint returns data points every ~5 minutes, which provides plenty of granularity for a 1-hour view.
+## Overview
+Add a notification system that monitors live price data for significant movements (>5% in 24h) and watches for transaction status changes (pending to confirmed), surfacing toast alerts via `sonner`.
 
 ## Changes
 
-### File: `src/components/dashboard/PriceChart.tsx`
+### 1. New hook -- `src/hooks/usePriceAlerts.ts`
+A lightweight hook that monitors the `usePrices` data and fires toast alerts when a token's `changePercent24h` crosses the 5% threshold (positive or negative).
 
-1. When the user selects the "1H" interval, fetch (or reuse) the 24H chart data instead of calling `fetchMarketChart('bitcoin', 0.042)`
-2. Filter the returned data points to only those within the last 60 minutes (`Date.now() - 3600000`)
-3. Keep the existing formatting logic (time-based X-axis labels for 1H)
+- Tracks which symbols have already been alerted (via a `useRef<Set<string>>`) to avoid repeated toasts on every poll cycle
+- Resets the "alerted" set when the price crosses back below the threshold
+- Toast content: "BTC is up 6.2% in the last 24h" or "STX is down 5.4% in the last 24h" with appropriate icons (TrendingUp / TrendingDown)
+- Uses `sonner`'s `toast()` with a custom duration of 8 seconds
 
-**Implementation approach:**
-- In the `loadChart` callback, check if `intv === '1H'` -- if so, call `fetchMarketChart('bitcoin', 1)` (same as 24H) and then filter results to `timestamp >= Date.now() - 3_600_000`
-- This means the 1H and 24H intervals share the same cached API response in `coingecko.ts` (cache key `bitcoin-1`), eliminating the extra network call entirely
+### 2. New hook -- `src/hooks/useTransactionAlerts.ts`
+Monitors the transaction list for status changes from `pending` to `confirmed`.
 
-This is a ~5-line change in `PriceChart.tsx` only. No changes needed to `coingecko.ts` or any other file.
+- Keeps a `useRef<Set<string>>` of previously-pending transaction IDs
+- On each update, compares current statuses against the previous set
+- When a transaction flips to `confirmed`, fires a toast: "Transaction confirmed: Sent 0.01 sBTC"
+- Also alerts on new incoming transactions (type `receive`): "Received 0.05 sBTC"
 
+### 3. New component -- `src/components/notifications/NotificationProvider.tsx`
+A thin wrapper component that mounts both alert hooks. This keeps the Dashboard clean and makes the notification logic reusable.
+
+- Renders nothing (returns `null`) -- purely a side-effect component
+- Imports and calls `usePriceAlerts()` and `useTransactionAlerts()`
+
+### 4. Update `src/pages/Dashboard.tsx`
+- Import and render `<NotificationProvider />` at the top of the Dashboard component
+- No other changes to the Dashboard layout
+
+### 5. Notification preferences in Settings (optional enhancement)
+- Add a "Notifications" section to the Settings page with toggles for:
+  - Price movement alerts (on/off)
+  - Transaction confirmations (on/off)  
+  - Price threshold slider (default 5%, range 1-20%)
+- Store preferences in `localStorage`
+- Both alert hooks read from localStorage to respect user preferences
+
+## Technical Notes
+- No new dependencies -- uses existing `sonner` toast system
+- Price alerts only fire once per threshold crossing per token (not on every 60s poll)
+- Transaction alerts compare against a snapshot of previous state to detect changes
+- The 5% threshold is configurable via the Settings page or a constant
+- All alert logic is isolated in hooks, making it easy to test or disable
