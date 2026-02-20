@@ -14,6 +14,7 @@ export function usePrices() {
   const { demoMode } = useDemoMode();
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isStale, setIsStale] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const hasErrored = useRef(false);
   const retryCount = useRef(0);
   const MAX_RETRIES = 3;
@@ -66,6 +67,7 @@ export function usePrices() {
         setLastUpdated(new Date());
         setIsStale(false);
         hasErrored.current = false;
+        setHasError(false);
         retryCount.current = 0;
       } catch (err) {
         if (attempt < MAX_RETRIES) {
@@ -77,6 +79,7 @@ export function usePrices() {
           toast.error('Failed to fetch live prices. Using cached data.');
           hasErrored.current = true;
         }
+        setHasError(true);
         setIsLive(false);
       } finally {
         setIsLoading(false);
@@ -122,5 +125,5 @@ export function usePrices() {
 
   const getPrice = (symbol: string) => prices.find(p => p.symbol === symbol);
 
-  return { prices, isLoading, getPrice, isLive, lastUpdated, isStale, retry: load };
+  return { prices, isLoading, getPrice, isLive, lastUpdated, isStale, hasError, retry: load };
 }
