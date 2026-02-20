@@ -11,6 +11,7 @@ import { StaggerContainer } from '@/components/layout/StaggerContainer';
 import { StaggerItem } from '@/components/layout/StaggerItem';
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Clock, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { NotificationProvider } from '@/components/notifications/NotificationProvider';
 import {
   Table,
   TableBody,
@@ -55,6 +56,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      <NotificationProvider />
       <h1 className="text-2xl font-bold">Portfolio</h1>
 
       {/* Top stat cards */}
