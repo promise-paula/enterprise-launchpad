@@ -47,7 +47,7 @@ const TX_TYPE_CONFIG = {
   swap: { label: 'Swap', icon: ArrowLeftRight, color: 'text-blue-400', bg: 'bg-blue-500/10' },
 } as const;
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 20;
 
 type TypeFilter = 'all' | 'send' | 'receive' | 'swap';
 
@@ -297,8 +297,10 @@ export default function TransactionHistory() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <a
-                            href="#"
+                        <a
+                            href={`https://explorer.hiro.so/txid/${tx.txHash}?chain=mainnet`}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="text-xs text-primary hover:underline inline-flex items-center gap-1 font-mono"
                           >
                             {tx.txHash.slice(0, 10)}…
@@ -345,7 +347,12 @@ export default function TransactionHistory() {
                     </div>
                     <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
                       <span>{format(tx.timestamp, 'MMM d, HH:mm')}</span>
-                      <a href="#" className="text-primary hover:underline inline-flex items-center gap-1 font-mono">
+                      <a
+                        href={`https://explorer.hiro.so/txid/${tx.txHash}?chain=mainnet`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline inline-flex items-center gap-1 font-mono"
+                      >
                         {tx.txHash.slice(0, 10)}… <ExternalLink className="h-3 w-3" />
                       </a>
                     </div>

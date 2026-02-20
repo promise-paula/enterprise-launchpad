@@ -10,6 +10,8 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/AppSidebar';
+import { OfflineBanner } from '@/components/OfflineBanner';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import {
   Sun,
   Moon,
@@ -37,15 +39,26 @@ export default function DashboardLayout() {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
+        {/* Skip to content */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-4 focus:left-4 focus:bg-primary focus:text-primary-foreground focus:px-4 focus:py-2 focus:rounded-md focus:text-sm focus:font-medium"
+        >
+          Skip to main content
+        </a>
+
         {/* Desktop Sidebar */}
         <div className="hidden md:block">
           <AppSidebar />
         </div>
 
         <div className="flex-1 flex flex-col min-w-0">
+          {/* Offline Banner */}
+          <OfflineBanner />
+
           {/* Header */}
           <header className="sticky top-0 z-40 h-16 glass-card border-b border-border/50 flex items-center px-4 gap-3">
-            <SidebarTrigger className="hidden md:inline-flex" />
+            <SidebarTrigger className="hidden md:inline-flex" aria-label="Toggle sidebar" />
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 rounded-lg bg-gradient-primary flex items-center justify-center md:hidden">
                 <span className="text-xs font-bold text-primary-foreground">₿</span>
@@ -69,7 +82,7 @@ export default function DashboardLayout() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                aria-label="Toggle theme"
+                aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
               >
                 {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
@@ -84,12 +97,14 @@ export default function DashboardLayout() {
           </header>
 
           {/* Main content */}
-          <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6">
-            <Outlet />
+          <main id="main-content" className="flex-1 p-4 md:p-6 pb-20 md:pb-6" role="main">
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </main>
 
           {/* Mobile Bottom Nav */}
-          <nav className="md:hidden fixed bottom-0 inset-x-0 h-16 glass-card border-t border-border/50 flex items-center justify-around z-40">
+          <nav className="md:hidden fixed bottom-0 inset-x-0 h-16 glass-card border-t border-border/50 flex items-center justify-around z-40" aria-label="Mobile navigation">
             {navItems.map(item => {
               const isActive = location.pathname === item.url;
               return (
@@ -100,6 +115,7 @@ export default function DashboardLayout() {
                     isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                   }`}
                   aria-label={item.title}
+                  aria-current={isActive ? 'page' : undefined}
                 >
                   <item.icon className="h-5 w-5" />
                   <span className="text-[10px] font-medium">{item.title}</span>
