@@ -1,10 +1,14 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePrices } from '@/hooks/usePrices';
+import { fetchMarketChart } from '@/lib/coingecko';
 import type { TimeInterval } from '@/types';
+import type { MarketChartPoint } from '@/lib/coingecko';
 import { formatUsd } from '@/lib/formatters';
+import { toast } from 'sonner';
 import {
   AreaChart,
   Area,
@@ -16,47 +20,59 @@ import {
 } from 'recharts';
 
 const intervals: TimeInterval[] = ['1H', '24H', '7D', '30D'];
+const intervalToDays: Record<TimeInterval, number | string> = {
+  '1H': 0.042,
+  '24H': 1,
+  '7D': 7,
+  '30D': 30,
+};
 
-function generateChartData(sparkline: number[], interval: TimeInterval) {
-  const count = interval === '1H' ? 12 : interval === '24H' ? 24 : interval === '7D' ? 7 : 30;
-  const base = sparkline[sparkline.length - 1] || 97000;
-  const data = [];
-  for (let i = 0; i < count; i++) {
-    const variation = (Math.random() - 0.48) * base * 0.003;
-    data.push({
-      time: i,
-      price: base + variation * (i - count / 2),
-    });
+function formatXLabel(timestamp: number, interval: TimeInterval): string {
+  const d = new Date(timestamp);
+  if (interval === '1H' || interval === '24H') {
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
-  // Ensure last point matches current price
-  if (data.length) data[data.length - 1].price = base;
-  return data;
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
 export function PriceChart() {
   const [interval, setInterval] = useState<TimeInterval>('24H');
-  const { prices, isLoading } = usePrices();
-  const sbtc = prices.find(p => p.symbol === 'sBTC');
+  const { isLive } = usePrices();
+  const [chartData, setChartData] = useState<MarketChartPoint[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const chartData = useMemo(() => {
-    if (!sbtc) return [];
-    return generateChartData(sbtc.sparkline, interval);
-  }, [sbtc, interval]);
+  const loadChart = useCallback(async (intv: TimeInterval) => {
+    setLoading(true);
+    try {
+      const data = await fetchMarketChart('bitcoin', intervalToDays[intv]);
+      setChartData(data);
+    } catch {
+      toast.error('Failed to load chart data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  if (isLoading) {
-    return (
-      <Card className="glass-card">
-        <CardContent className="p-6">
-          <Skeleton className="h-[300px] w-full" />
-        </CardContent>
-      </Card>
-    );
-  }
+  useEffect(() => {
+    loadChart(interval);
+  }, [interval, loadChart]);
+
+  const handleInterval = (i: TimeInterval) => setInterval(i);
+
+  // Downsample for display (max ~60 points)
+  const displayData = chartData.length > 60
+    ? chartData.filter((_, idx) => idx % Math.ceil(chartData.length / 60) === 0)
+    : chartData;
 
   return (
     <Card className="glass-card">
       <CardHeader className="flex-row items-center justify-between pb-2">
-        <CardTitle className="text-lg">sBTC Price</CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-lg">sBTC Price</CardTitle>
+          <Badge variant="outline" className={`text-[10px] ${isLive ? 'border-success/50 text-success' : 'border-muted-foreground/50 text-muted-foreground'}`}>
+            {isLive ? '● Live' : '○ Offline'}
+          </Badge>
+        </div>
         <div className="flex gap-1">
           {intervals.map(i => (
             <Button
@@ -64,7 +80,7 @@ export function PriceChart() {
               variant={interval === i ? 'default' : 'ghost'}
               size="sm"
               className={`text-xs h-7 px-3 ${interval === i ? 'bg-primary text-primary-foreground' : ''}`}
-              onClick={() => setInterval(i)}
+              onClick={() => handleInterval(i)}
             >
               {i}
             </Button>
@@ -72,43 +88,58 @@ export function PriceChart() {
         </div>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <AreaChart data={chartData}>
-            <defs>
-              <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(245, 100%, 63%)" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="hsl(245, 100%, 63%)" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-            <XAxis dataKey="time" hide />
-            <YAxis
-              domain={['auto', 'auto']}
-              tickFormatter={(v: number) => `$${(v / 1000).toFixed(1)}k`}
-              width={60}
-              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <Tooltip
-              content={({ active, payload }) => {
-                if (!active || !payload?.length) return null;
-                return (
-                  <div className="glass-card rounded-lg p-3 border border-border/50 shadow-lg">
-                    <p className="font-mono font-bold">{formatUsd(payload[0].value as number)}</p>
-                  </div>
-                );
-              }}
-            />
-            <Area
-              type="monotone"
-              dataKey="price"
-              stroke="hsl(245, 100%, 63%)"
-              strokeWidth={2}
-              fill="url(#priceGrad)"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+        {loading ? (
+          <Skeleton className="h-[300px] w-full" />
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={displayData}>
+              <defs>
+                <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(245, 100%, 63%)" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="hsl(245, 100%, 63%)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+              <XAxis
+                dataKey="timestamp"
+                tickFormatter={(v: number) => formatXLabel(v, interval)}
+                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+                minTickGap={40}
+              />
+              <YAxis
+                domain={['auto', 'auto']}
+                tickFormatter={(v: number) => `$${(v / 1000).toFixed(1)}k`}
+                width={60}
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const point = payload[0].payload as MarketChartPoint;
+                  return (
+                    <div className="glass-card rounded-lg p-3 border border-border/50 shadow-lg">
+                      <p className="font-mono font-bold">{formatUsd(point.price)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(point.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                  );
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="price"
+                stroke="hsl(245, 100%, 63%)"
+                strokeWidth={2}
+                fill="url(#priceGrad)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
       </CardContent>
     </Card>
   );

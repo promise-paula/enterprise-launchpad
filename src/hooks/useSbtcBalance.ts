@@ -1,24 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import type { SbtcBalance } from '@/types';
+import { usePrices } from './usePrices';
 
-const MOCK_SBTC: SbtcBalance = {
-  balance: 0.12856700,
-  balanceUsd: 12489.10,
-  change24h: 155.34,
-  changePercent24h: 1.26,
-};
+const MOCK_BALANCE = 0.12856700;
 
 export function useSbtcBalance() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [sbtcBalance, setSbtcBalance] = useState<SbtcBalance | null>(null);
+  const { prices, isLoading } = usePrices();
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSbtcBalance(MOCK_SBTC);
-      setIsLoading(false);
-    }, 450);
-    return () => clearTimeout(timer);
-  }, []);
+  const sbtcBalance = useMemo<SbtcBalance | null>(() => {
+    const sbtc = prices.find(p => p.symbol === 'sBTC');
+    if (!sbtc) return null;
+
+    const balanceUsd = MOCK_BALANCE * sbtc.price;
+    const change24h = balanceUsd * (sbtc.changePercent24h / 100);
+
+    return {
+      balance: MOCK_BALANCE,
+      balanceUsd,
+      change24h,
+      changePercent24h: sbtc.changePercent24h,
+    };
+  }, [prices]);
 
   return { sbtcBalance, isLoading };
 }
