@@ -1,47 +1,49 @@
 
-
-# Smooth Page Transitions & Staggered Card Animations
+# Full Transaction History Page
 
 ## Overview
-Add framer-motion to the project for polished route transition animations and staggered entrance animations on dashboard cards, giving the app a premium, enterprise-grade feel.
+Replace the placeholder "Coming Soon" page with a fully functional Transaction History page featuring type filters, date range picker, search, pagination, and CSV export.
 
-## 1. Install framer-motion
-- Add `framer-motion` as a dependency
+## Features
 
-## 2. Page Transition Wrapper
-- Create `src/components/layout/PageTransition.tsx` — a reusable wrapper using framer-motion's `motion.div` with fade + slight slide-up on enter, fade-out on exit
-- Wrap the `<Outlet />` in `DashboardLayout.tsx` with `<AnimatePresence mode="wait">` keyed by `location.pathname` so route changes animate smoothly
-- Wrap the landing page (`Index.tsx`) content similarly
+### Filter Bar
+- **Type filter**: Toggle buttons for All / Send / Receive / Swap with transaction-type icons and color coding
+- **Date range picker**: Two date pickers (From / To) using the existing Shadcn Calendar + Popover components with `date-fns` formatting
+- **Search**: Text input to search by address or transaction hash (debounced, case-insensitive)
+- **Clear filters**: Button to reset all filters at once
 
-## 3. Staggered Card Entrance on Dashboard
-- Create `src/components/layout/StaggerContainer.tsx` and `StaggerItem.tsx` using framer-motion's `staggerChildren` variant pattern
-- Wrap the stat cards grid in `Dashboard.tsx` with `StaggerContainer`, and each card with `StaggerItem` so they fade/slide in one after another with a ~0.08s stagger delay
-- Apply the same stagger pattern to the Holdings and Recent Transactions sections
+### Transaction Table
+- Desktop: Full table with columns -- Type, Token, Amount, Value (USD), From/To, Date, Status, Tx Hash (linked)
+- Mobile: Compact card layout (reusing the pattern from Dashboard's recent transactions)
+- Empty state when no transactions match the current filters
 
-## 4. Micro-interaction Enhancements
-- Replace the CSS `hover-lift` class on cards with framer-motion's `whileHover={{ y: -4, boxShadow: "..." }}` for smoother, GPU-accelerated hover animations
-- Add subtle scale-on-tap (`whileTap={{ scale: 0.98 }}`) to interactive cards and buttons in the dashboard
+### Pagination
+- 5 transactions per page using the existing Shadcn Pagination component
+- Page numbers with Previous/Next navigation
+- "Showing X-Y of Z transactions" summary text
 
-## 5. Landing Page Polish
-- Stagger the hero headline, subheadline, and CTA button entrance
-- Stagger the feature cards grid entrance as the user scrolls or on mount
+### CSV Export
+- "Export CSV" button in the header that downloads all filtered transactions as a `.csv` file
+
+### Animations
+- Page wrapped in `PageTransition` for route animation
+- Filter bar and table wrapped in `StaggerContainer` / `StaggerItem` for entrance animations
+
+## More Mock Data
+- Expand `useTransactions` from 8 to ~20 mock transactions to make pagination and filtering meaningful, adding variety in types, tokens, dates, and statuses
 
 ## Technical Details
 
-**Files to create:**
-- `src/components/layout/PageTransition.tsx` — motion wrapper with enter/exit variants
-- `src/components/layout/StaggerContainer.tsx` — parent container with staggerChildren orchestration
-- `src/components/layout/StaggerItem.tsx` — child item with individual animation variants
-
 **Files to modify:**
-- `src/components/layout/DashboardLayout.tsx` — add AnimatePresence around Outlet, keyed by location
-- `src/pages/Dashboard.tsx` — wrap card grids and sections with StaggerContainer/StaggerItem
-- `src/pages/Index.tsx` — add staggered entrance to hero and feature sections
-- `src/index.css` — remove the CSS-based `animate-fade-in` and `animate-slide-up` usages that will be replaced by framer-motion equivalents (keep the keyframes for non-framer usage)
+- `src/hooks/useTransactions.ts` -- add ~12 more mock transactions spanning several days
+- `src/pages/TransactionHistory.tsx` -- full rewrite with filter state, search, pagination logic, table, mobile cards, CSV export
 
-**Animation specs:**
-- Page transition: 0.3s ease-out, fade + translateY(12px -> 0)
-- Card stagger: 0.08s delay between items, 0.4s duration each
-- Hover lift: translateY(-4px) over 0.2s
-- Exit: 0.2s fade-out
+**No new dependencies needed.** Uses existing: `date-fns`, Shadcn Calendar/Popover/Select/Input/Table/Pagination/Badge/Button, `lucide-react` icons, framer-motion wrappers.
 
+**Filter logic** (all client-side):
+1. Filter by type (if not "all")
+2. Filter by date range (if dates selected)
+3. Filter by search query (match against `from`, `to`, `txHash` fields)
+4. Paginate the resulting array (5 per page)
+
+**CSV export**: Generate CSV string from filtered transactions, create a Blob, and trigger download via a temporary anchor element.
