@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react';
 export interface NotificationPreferences {
   priceAlerts: boolean;
   transactionAlerts: boolean;
+  pushNotifications: boolean;
   priceThreshold: number; // percentage, e.g. 5
 }
 
@@ -11,6 +12,7 @@ const STORAGE_KEY = 'notification-preferences';
 const DEFAULTS: NotificationPreferences = {
   priceAlerts: true,
   transactionAlerts: true,
+  pushNotifications: false,
   priceThreshold: 5,
 };
 
