@@ -1,34 +1,69 @@
 
 
-# Add Fallback Mock Data to Portfolio Value Chart
+# Add User-Defined Price Alert System
 
 ## Overview
-When the CoinGecko API is unavailable or Demo Mode is active, the Portfolio Value chart will display realistic mock data instead of showing an error state. A "Demo Data" badge will indicate the data is simulated. In Demo Mode, values will jitter every 3 seconds to simulate live updates (matching the pattern in `usePrices`).
+Allow users to create custom price alerts for BTC and sBTC (e.g., "Alert me when BTC crosses $100,000"). Alerts are stored in localStorage and checked against live prices on each poll cycle. When a threshold is crossed, the user gets a toast notification, a push notification (if enabled), and an entry in the notification history.
 
-## How It Works
-- Generate 60 mock portfolio data points spanning the selected interval (7D or 30D), using a realistic base value (~$9,200) with subtle random walk variation
-- When Demo Mode is on: skip the API call entirely and use mock data, with a 3-second jitter interval
-- When API fails: fall back to mock data instead of showing the "Service Unavailable" error
-- A small "Demo Data" badge appears above the chart to indicate simulated data
+## User Experience
+- A new "Price Alerts" card appears on the Settings page below the existing Notifications card
+- Users select a token (BTC or sBTC), a direction (above/below), and enter a target price
+- Active alerts are listed with the ability to delete them
+- When a price crosses the threshold, the alert fires once, then auto-removes itself
+- Triggered alerts appear in the existing Notification History page
 
 ## Changes
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/PortfolioChart.tsx` | Add mock data generator, integrate `useDemoMode`, use fallback on API failure, add jitter effect and "Demo Data" badge |
+| `src/lib/priceAlerts.ts` | New file -- localStorage CRUD for user-defined price alerts |
+| `src/hooks/usePriceAlerts.ts` | Extend to also check user-defined threshold alerts |
+| `src/hooks/useUserPriceAlerts.ts` | New hook -- reactive state for managing custom alerts in the Settings UI |
+| `src/pages/Settings.tsx` | Add "Price Alerts" card with form to create/delete custom alerts |
+| `src/types/index.ts` | Add `PriceAlert` interface |
 
 ## Technical Details
 
-### `src/components/dashboard/PortfolioChart.tsx`
+### 1. `src/types/index.ts` -- Add PriceAlert type
 
-1. **Add `generateMockData(days)` function** -- creates 60 `PortfolioPoint` entries with timestamps spanning `days` back from now, values using a seeded random walk around $9,200
+```typescript
+export interface PriceAlert {
+  id: string;
+  symbol: 'BTC' | 'sBTC';
+  direction: 'above' | 'below';
+  targetPrice: number;
+  createdAt: string;
+}
+```
 
-2. **Import and use `useDemoMode`** -- when `demoMode` is true, skip the API fetch and immediately set mock data
+### 2. `src/lib/priceAlerts.ts` -- localStorage CRUD
 
-3. **Fallback on error** -- in the `catch` block, instead of only setting the error state, also call `setData(generateMockData(days))` so the chart always renders
+- `loadAlerts(): PriceAlert[]` -- read from `price-alerts` key
+- `saveAlerts(alerts: PriceAlert[]): void` -- persist to localStorage
+- `addAlert(alert: Omit<PriceAlert, 'id' | 'createdAt'>): PriceAlert` -- generate ID, push, save, dispatch `price-alerts-change` custom event
+- `removeAlert(id: string): void` -- filter out, save, dispatch event
+- Validates `targetPrice > 0` before saving
 
-4. **Track `isUsingMockData`** state -- boolean flag set to `true` when mock/fallback data is used, drives the "Demo Data" badge
+### 3. `src/hooks/useUserPriceAlerts.ts` -- Reactive hook for Settings UI
 
-5. **Add jitter effect** -- same pattern as `usePrices`: when `demoMode` is active, run a 3-second interval that applies +/-0.5% random jitter to each point's value
+- Uses `useState` initialized from `loadAlerts()`
+- Listens to `price-alerts-change` custom event to stay in sync
+- Exposes `{ alerts, add, remove }` interface
 
-6. **"Demo Data" badge** -- render a small warning-styled badge (`border-warning/50 text-warning`) reading "Demo Data" when `isUsingMockData` is true, placed next to the gain/loss badge in the header
+### 4. `src/hooks/usePriceAlerts.ts` -- Extend with threshold checking
+
+Add a second check inside the existing `useEffect` that:
+- Calls `loadAlerts()` to get user-defined alerts
+- For each alert, compares current price against `targetPrice` using `direction`
+- If crossed: fires toast, adds to notification history, sends push notification, then calls `removeAlert(id)` to auto-remove the triggered alert
+- Uses the existing `alerted` ref to prevent duplicate firing within the same poll cycle
+
+### 5. `src/pages/Settings.tsx` -- Price Alerts card
+
+Add a new card after the Notifications card:
+- Header: "Price Alerts" with a target icon
+- Form row: Token select (BTC / sBTC dropdown), Direction select (Above / Below), Price input (number, validated > 0), "Add" button
+- Below the form: list of active alerts, each showing "BTC above $100,000" with a delete (X) button
+- Empty state: "No price alerts set" message
+- Input validation: price must be a positive number, show inline error via toast if invalid
+
