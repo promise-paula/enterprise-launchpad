@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { getNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { addNotification } from '@/lib/notificationHistory';
-import { loadAlerts, removeAlert } from '@/lib/priceAlerts';
+import { loadAlerts, removeAlert, incrementFireCount } from '@/lib/priceAlerts';
 import { sendPushNotification } from '@/lib/pushNotification';
 import { toast } from 'sonner';
 import type { PriceData } from '@/types';
@@ -58,6 +58,8 @@ export function usePriceAlerts(prices: PriceData[]) {
         sendPushNotification('Price Alert Triggered', msg);
         if (!alert.repeat) {
           removeAlert(alert.id);
+        } else {
+          incrementFireCount(alert.id);
         }
       } else if (alert.repeat) {
         // Re-arm repeating alert when price moves back
