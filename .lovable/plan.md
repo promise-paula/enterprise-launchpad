@@ -1,31 +1,64 @@
 
 
-# Fix: Route Navigation Blank Page Bug
+# Live CoinGecko Price Integration
 
-## Problem
-When navigating between routes using the sidebar (e.g., Dashboard to History), the main content area goes completely blank. The page works fine on direct URL load. This is caused by `AnimatePresence mode="wait"` in `DashboardLayout.tsx` -- the exit animation completes but the new `PageTransition` component never mounts.
+## Overview
+Replace all mock price data with real-time prices from the CoinGecko free API (Demo plan, no API key required). This updates the Dashboard stat cards, sBTC price chart, and portfolio value calculations.
 
-## Root Cause
-`AnimatePresence` with `mode="wait"` requires proper key changes to trigger the exit/enter cycle. The issue is that React Router's `<Outlet />` doesn't re-mount when the route changes within the same layout -- it just swaps the child content. The `key={location.pathname}` on `PageTransition` should work, but the combination with `<Outlet />` inside can cause the new content to not render after the exit animation.
+## API Details
 
-## Fix
+CoinGecko free API base: `https://api.coingecko.com/api/v3`
 
-**File: `src/components/layout/DashboardLayout.tsx`**
+**Endpoints used:**
+- `/simple/price?ids=bitcoin,blockstack&vs_currencies=usd&include_24hr_change=true` -- current BTC and STX prices with 24h change
+- `/coins/bitcoin/market_chart?vs_currency=usd&days=N` -- historical BTC price data for the chart (days=1 for 24H, 7 for 7D, 30 for 30D)
 
-Replace the current AnimatePresence pattern. Instead of wrapping `<Outlet />` inside a single `PageTransition` keyed by pathname, each page component already wraps itself in `PageTransition`. The layout should just render `<Outlet />` directly, and let each page handle its own entrance animation independently. Remove `AnimatePresence` from the layout since page-level `PageTransition` components already handle fade-in.
+**Coin IDs:** `bitcoin` for BTC, `blockstack` for STX. sBTC pegs ~1:1 to BTC, so its price derives from the BTC price (with a tiny offset to simulate the peg spread).
 
-Alternatively, if we want to keep exit animations, we can use a different approach: clone the outlet content with a key. The simplest reliable fix is:
+## Changes
 
-1. Remove `AnimatePresence` and `PageTransition` from `DashboardLayout.tsx`
-2. Each page (Dashboard, TransactionHistory, Settings) already wraps content in `PageTransition`, so entrance animations will still work
+### 1. New API service -- `src/lib/coingecko.ts`
+Create a fetch wrapper with:
+- `fetchPrices()` -- calls `/simple/price`, returns BTC and STX current price + 24h change percentage
+- `fetchMarketChart(coinId, days)` -- calls `/coins/{id}/market_chart`, returns array of `[timestamp, price]` pairs for the chart
+- Basic error handling with fallback to last-known values
+- Rate-limit-friendly: no polling faster than 30 seconds
 
-This removes the exit animation (fade-out on route change) but guarantees reliable route transitions. The entrance fade-in/slide-up on each page will still provide a polished feel.
+### 2. Update `src/hooks/usePrices.ts`
+- Replace mock data with a `useEffect` that calls `fetchPrices()` on mount
+- Add 60-second polling interval via `setInterval` for auto-refresh
+- Derive sBTC price from BTC (apply a small -0.05% spread)
+- Generate sparkline from the 7-day market chart data on initial load
+- Keep `isLoading`, `prices`, and `getPrice` return shape unchanged
+- Graceful fallback: if the API fails, use last cached values and show a toast error
 
-## Technical Details
+### 3. Update `src/hooks/usePortfolio.ts`
+- Import `usePrices` to compute holdings values dynamically
+- Keep mock balances (0.128567 sBTC, 2450.50 STX) but calculate USD values from live prices
+- Compute `totalValue`, `change24h`, `changePercent24h` from real price data
+- `lastUpdated` set to current time on each price refresh
 
-**File to modify:** `src/components/layout/DashboardLayout.tsx`
-- Remove `AnimatePresence` and `PageTransition` imports
-- Replace the `<AnimatePresence mode="wait"><PageTransition key={...}><Outlet /></PageTransition></AnimatePresence>` block with just `<Outlet />`
+### 4. Update `src/hooks/useSbtcBalance.ts`
+- Import `usePrices` to derive `balanceUsd` and `changePercent24h` from live BTC price
+- Keep mock balance amount (0.128567) but calculate USD value dynamically
 
-No other files need changes -- `Dashboard.tsx`, `TransactionHistory.tsx`, and `Settings.tsx` already include their own `PageTransition` wrappers.
+### 5. Update `src/components/dashboard/PriceChart.tsx`
+- Replace `generateChartData` with real data from `fetchMarketChart('bitcoin', days)`
+- Map interval buttons to days: 1H=0.042 (1 hour), 24H=1, 7D=7, 30D=30
+- Use actual timestamps for XAxis labels (format hours or dates depending on interval)
+- Add loading state while chart data fetches
+- Cache chart data per interval to avoid re-fetching on toggle
+
+### 6. Error handling and UX
+- Show a toast notification (via `sonner`) if the API call fails
+- Display a subtle "Live" or "Offline" indicator near the price display
+- If rate-limited (HTTP 429), back off and retry after 60 seconds
+
+## Technical Notes
+
+- No API key needed for CoinGecko's free tier (but limited to ~30 calls/minute)
+- All fetches happen client-side (no edge function needed since this is a public API)
+- No new dependencies required
+- The `PriceData` type in `src/types/index.ts` stays unchanged
+- `usePortfolio` and `useSbtcBalance` will accept `prices` as a parameter or import `usePrices` internally to avoid prop drilling
 
