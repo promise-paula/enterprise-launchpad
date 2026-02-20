@@ -37,3 +37,13 @@ export function removeAlert(id: string) {
   saveAlerts(alerts);
   notifyChange();
 }
+
+export function incrementFireCount(id: string) {
+  const alerts = loadAlerts();
+  const alert = alerts.find(a => a.id === id);
+  if (alert) {
+    alert.fireCount = (alert.fireCount || 0) + 1;
+    saveAlerts(alerts);
+    notifyChange();
+  }
+}

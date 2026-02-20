@@ -63,4 +63,5 @@ export interface PriceAlert {
   targetPrice: number;
   createdAt: string;
   repeat?: boolean;
+  fireCount?: number;
 }
