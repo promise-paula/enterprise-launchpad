@@ -57,7 +57,7 @@ export default function LandingPage() {
   const stx = prices.find(p => p.symbol === 'STX');
 
   return (
-    <div className="min-h-screen bg-gradient-hero">
+    <div className="min-h-screen bg-gradient-hero scroll-smooth">
       {/* Nav */}
       <header className="fixed top-0 inset-x-0 z-50 h-16 glass-card border-b border-border/50">
         <div className="container flex items-center justify-between h-full">
@@ -111,7 +111,7 @@ export default function LandingPage() {
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="text-base px-8">
-                <Link to="/dashboard">Learn More</Link>
+                <a href="#features">Learn More</a>
               </Button>
             </motion.div>
           </motion.div>
@@ -158,7 +158,7 @@ export default function LandingPage() {
         </section>
 
         {/* Features */}
-        <section className="py-20 px-4">
+        <section id="features" className="py-20 px-4 scroll-mt-20">
           <div className="container max-w-5xl">
             <motion.h2
               className="text-3xl sm:text-4xl font-bold text-center mb-4"
@@ -202,13 +202,13 @@ export default function LandingPage() {
         <div className="container flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <p>© 2026 sBTC Portfolio Tracker. All rights reserved.</p>
           <div className="flex items-center gap-4">
-            <a href="#" className="hover:text-foreground transition-colors flex items-center gap-1">
+            <a href="https://docs.stacks.co" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors flex items-center gap-1">
               <FileText className="h-3.5 w-3.5" /> Docs
             </a>
-            <a href="#" className="hover:text-foreground transition-colors flex items-center gap-1">
+            <a href="https://github.com/stacks-network" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors flex items-center gap-1">
               <Github className="h-3.5 w-3.5" /> GitHub
             </a>
-            <a href="#" className="hover:text-foreground transition-colors flex items-center gap-1">
+            <a href="https://twitter.com/Stacks" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors flex items-center gap-1">
               <Twitter className="h-3.5 w-3.5" /> Twitter
             </a>
             <span className="text-xs opacity-60">v1.0.0</span>

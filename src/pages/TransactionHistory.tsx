@@ -29,6 +29,7 @@ import {
   Pagination,
   PaginationContent,
   PaginationItem,
+  PaginationEllipsis,
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
@@ -48,6 +49,18 @@ const TX_TYPE_CONFIG = {
 } as const;
 
 const PAGE_SIZE = 20;
+
+function getPageNumbers(current: number, total: number): (number | 'ellipsis')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages: (number | 'ellipsis')[] = [1];
+  if (current > 3) pages.push('ellipsis');
+  for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+    pages.push(i);
+  }
+  if (current < total - 2) pages.push('ellipsis');
+  pages.push(total);
+  return pages;
+}
 
 type TypeFilter = 'all' | 'send' | 'receive' | 'swap';
 
@@ -377,17 +390,23 @@ export default function TransactionHistory() {
                     className={cn(safePage <= 1 && 'pointer-events-none opacity-50', 'cursor-pointer')}
                   />
                 </PaginationItem>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <PaginationItem key={p}>
-                    <PaginationLink
-                      isActive={p === safePage}
-                      onClick={() => setPage(p)}
-                      className="cursor-pointer"
-                    >
-                      {p}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
+                {getPageNumbers(safePage, totalPages).map((entry, i) =>
+                  entry === 'ellipsis' ? (
+                    <PaginationItem key={`ellipsis-${i}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={entry}>
+                      <PaginationLink
+                        isActive={entry === safePage}
+                        onClick={() => setPage(entry)}
+                        className="cursor-pointer"
+                      >
+                        {entry}
+                      </PaginationLink>
+                    </PaginationItem>
+                  )
+                )}
                 <PaginationItem>
                   <PaginationNext
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}

@@ -18,6 +18,7 @@ import { StaggerItem } from '@/components/layout/StaggerItem';
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Clock, ExternalLink, ArrowUpDown, AlertTriangle, Coins } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { NotificationProvider } from '@/components/notifications/NotificationProvider';
+import { ErrorState } from '@/components/ErrorState';
 import {
   Table,
   TableBody,
@@ -71,7 +72,7 @@ const txItemVariants = {
 export default function Dashboard() {
   const { portfolio, isLoading: portLoading } = usePortfolio();
   const { sbtcBalance, isLoading: sbtcLoading } = useSbtcBalance();
-  const { prices, isLoading: priceLoading, isStale } = usePrices();
+  const { prices, isLoading: priceLoading, isStale, hasError, retry } = usePrices();
   const { transactions, isLoading: txLoading } = useTransactions();
   const { getFlashClass, getFlashKey } = usePriceFlash(prices);
 
@@ -133,6 +134,11 @@ export default function Dashboard() {
           <AlertTriangle className="h-4 w-4 shrink-0" />
           Prices may be outdated. Data hasn't been updated in over 5 minutes.
         </div>
+      )}
+
+      {/* API error state */}
+      {!isLoading && hasError && prices.length === 0 && (
+        <ErrorState variant="api" onRetry={retry} />
       )}
 
       {/* Top stat cards */}
