@@ -44,7 +44,12 @@ export function PriceChart() {
   const loadChart = useCallback(async (intv: TimeInterval) => {
     setLoading(true);
     try {
-      const data = await fetchMarketChart('bitcoin', intervalToDays[intv]);
+      const days = intv === '1H' ? 1 : intervalToDays[intv];
+      let data = await fetchMarketChart('bitcoin', days);
+      if (intv === '1H') {
+        const cutoff = Date.now() - 3_600_000;
+        data = data.filter(p => p.timestamp >= cutoff);
+      }
       setChartData(data);
     } catch {
       toast.error('Failed to load chart data');
