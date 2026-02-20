@@ -1,14 +1,186 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { usePrices } from '@/hooks/usePrices';
+import { useTheme } from '@/hooks/useTheme';
+import { formatUsd, formatChangePercent } from '@/lib/formatters';
+import {
+  BarChart3,
+  Layers,
+  Wallet,
+  TrendingUp,
+  ArrowRight,
+  Sun,
+  Moon,
+  Github,
+  Twitter,
+  FileText,
+} from 'lucide-react';
 
-const Index = () => {
+const features = [
+  {
+    icon: BarChart3,
+    title: 'Portfolio Analytics',
+    desc: 'Real-time tracking of your sBTC holdings with detailed performance metrics and interactive charts.',
+  },
+  {
+    icon: Layers,
+    title: 'DeFi Positions',
+    desc: 'Monitor your positions across ALEX, Zest, BitFlow, and StackingDAO in one unified dashboard.',
+  },
+  {
+    icon: Wallet,
+    title: 'Multi-Wallet Support',
+    desc: 'Watch any Stacks address and aggregate multiple wallets into a single portfolio view.',
+  },
+];
+
+export default function LandingPage() {
+  const { prices, isLoading } = usePrices();
+  const { theme, setTheme } = useTheme();
+
+  const btc = prices.find(p => p.symbol === 'BTC');
+  const stx = prices.find(p => p.symbol === 'STX');
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-gradient-hero">
+      {/* Nav */}
+      <header className="fixed top-0 inset-x-0 z-50 h-16 glass-card border-b border-border/50">
+        <div className="container flex items-center justify-between h-full">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
+              <span className="text-sm font-bold text-primary-foreground">₿</span>
+            </div>
+            <span className="font-bold text-lg">sBTC Tracker</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+            <Button asChild className="bg-gradient-primary hover:opacity-90 animate-pulse-glow">
+              <Link to="/dashboard">Connect Wallet</Link>
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        {/* Hero */}
+        <section className="pt-32 pb-20 px-4">
+          <div className="container max-w-4xl text-center animate-fade-in">
+            <Badge variant="secondary" className="mb-6 px-4 py-1.5 text-sm">
+              <TrendingUp className="mr-1.5 h-3.5 w-3.5" /> Powered by Stacks
+            </Badge>
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6">
+              Track Your{' '}
+              <span className="text-gradient-primary">sBTC Portfolio</span>
+            </h1>
+            <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+              Monitor your sBTC holdings, DeFi positions, and transaction history — all in one beautifully crafted dashboard.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button asChild size="lg" className="bg-gradient-primary hover:opacity-90 text-base px-8 animate-pulse-glow">
+                <Link to="/dashboard">
+                  Connect Wallet <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="text-base px-8">
+                <Link to="/dashboard">View Demo</Link>
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* Live Stats */}
+        <section className="py-12 px-4">
+          <div className="container max-w-4xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[btc, stx].map((coin) =>
+                coin ? (
+                  <Card key={coin.symbol} className="glass-card hover-lift">
+                    <CardContent className="flex items-center justify-between p-6">
+                      <div>
+                        <p className="text-sm text-muted-foreground">{coin.name}</p>
+                        <p className="text-2xl font-bold font-mono">{formatUsd(coin.price)}</p>
+                      </div>
+                      <Badge
+                        className={
+                          coin.changePercent24h >= 0
+                            ? 'bg-success/15 text-success border-success/30'
+                            : 'bg-destructive/15 text-destructive border-destructive/30'
+                        }
+                      >
+                        {formatChangePercent(coin.changePercent24h)}
+                      </Badge>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card key={Math.random()} className="glass-card">
+                    <CardContent className="p-6">
+                      <div className="h-6 w-20 animate-shimmer rounded mb-2" />
+                      <div className="h-8 w-32 animate-shimmer rounded" />
+                    </CardContent>
+                  </Card>
+                )
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Features */}
+        <section className="py-20 px-4">
+          <div className="container max-w-5xl">
+            <h2 className="text-3xl sm:text-4xl font-bold text-center mb-4">
+              Everything You Need
+            </h2>
+            <p className="text-center text-muted-foreground mb-12 max-w-xl mx-auto">
+              A comprehensive toolkit for managing and monitoring your sBTC investments on the Stacks blockchain.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {features.map((f, i) => (
+                <Card
+                  key={f.title}
+                  className="glass-card hover-lift gradient-card"
+                  style={{ animationDelay: `${i * 100}ms` }}
+                >
+                  <CardContent className="p-8">
+                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-5">
+                      <f.icon className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">{f.title}</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">{f.desc}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-border/50 py-8 px-4">
+        <div className="container flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
+          <p>© 2026 sBTC Portfolio Tracker. All rights reserved.</p>
+          <div className="flex items-center gap-4">
+            <a href="#" className="hover:text-foreground transition-colors flex items-center gap-1">
+              <FileText className="h-3.5 w-3.5" /> Docs
+            </a>
+            <a href="#" className="hover:text-foreground transition-colors flex items-center gap-1">
+              <Github className="h-3.5 w-3.5" /> GitHub
+            </a>
+            <a href="#" className="hover:text-foreground transition-colors flex items-center gap-1">
+              <Twitter className="h-3.5 w-3.5" /> Twitter
+            </a>
+            <span className="text-xs opacity-60">v1.0.0</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
-};
-
-export default Index;
+}
