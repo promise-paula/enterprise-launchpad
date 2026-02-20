@@ -1,39 +1,34 @@
 
-# Portfolio Performance Chart
+
+# Add Fallback Mock Data to Portfolio Value Chart
 
 ## Overview
-Add a new "Portfolio Value" chart component below the existing sBTC Price chart on the Dashboard. It derives historical portfolio value by combining BTC and STX market chart data with the user's mock balances, then displays the total value over time with a gain/loss summary.
+When the CoinGecko API is unavailable or Demo Mode is active, the Portfolio Value chart will display realistic mock data instead of showing an error state. A "Demo Data" badge will indicate the data is simulated. In Demo Mode, values will jitter every 3 seconds to simulate live updates (matching the pattern in `usePrices`).
 
 ## How It Works
-- Fetch BTC and STX historical market charts from CoinGecko (same `fetchMarketChart` already used)
-- For each timestamp, compute: `(sBTC_balance * btc_price * 0.9995) + (STX_balance * stx_price)` using the mock balances
-- Display an AreaChart with time interval selector (7D, 30D) -- shorter intervals (1H, 24H) are less meaningful for portfolio trend
-- Show a summary header with current portfolio value, absolute gain/loss, and percentage change over the selected period
-- Color the chart gradient green or red based on whether the portfolio gained or lost value
+- Generate 60 mock portfolio data points spanning the selected interval (7D or 30D), using a realistic base value (~$9,200) with subtle random walk variation
+- When Demo Mode is on: skip the API call entirely and use mock data, with a 3-second jitter interval
+- When API fails: fall back to mock data instead of showing the "Service Unavailable" error
+- A small "Demo Data" badge appears above the chart to indicate simulated data
 
-## Files Changed
+## Changes
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/PortfolioChart.tsx` | New component: fetches BTC + STX chart data, computes portfolio values, renders AreaChart |
-| `src/pages/Dashboard.tsx` | Import and render `PortfolioChart` between the PriceChart and Holdings sections |
+| `src/components/dashboard/PortfolioChart.tsx` | Add mock data generator, integrate `useDemoMode`, use fallback on API failure, add jitter effect and "Demo Data" badge |
 
 ## Technical Details
 
-### `src/components/dashboard/PortfolioChart.tsx` (new)
-- Imports `fetchMarketChart` from `@/lib/coingecko` and uses the same mock balances as `usePortfolio` (sBTC: 0.128567, STX: 2450.50)
-- Supports two intervals: `7D` and `30D` (selectable via buttons)
-- On mount / interval change:
-  1. Fetch `fetchMarketChart('bitcoin', days)` and `fetchMarketChart('blockstack', days)` in parallel
-  2. Merge the two datasets by aligning timestamps (use nearest-match since CoinGecko returns slightly different timestamps for each coin)
-  3. For each aligned point, compute `portfolioValue = sBTC_balance * btcPrice * 0.9995 + STX_balance * stxPrice`
-- Computes gain/loss: `startValue` (first point) vs `endValue` (last point), percentage = `((end - start) / start) * 100`
-- Header shows: "Portfolio Value" title, absolute and percentage change badges (green/red)
-- Chart: Recharts `AreaChart` with green gradient when positive, red when negative
-- Tooltip shows: formatted USD value and date/time
-- Loading state: Skeleton, Error state: reuses existing `ErrorState` component
-- Downsamples to ~60 points for performance (same pattern as PriceChart)
+### `src/components/dashboard/PortfolioChart.tsx`
 
-### `src/pages/Dashboard.tsx` changes
-- Import `PortfolioChart`
-- Add a new `StaggerContainer > StaggerItem` block after the PriceChart section (line ~229) containing `<PortfolioChart />`
+1. **Add `generateMockData(days)` function** -- creates 60 `PortfolioPoint` entries with timestamps spanning `days` back from now, values using a seeded random walk around $9,200
+
+2. **Import and use `useDemoMode`** -- when `demoMode` is true, skip the API fetch and immediately set mock data
+
+3. **Fallback on error** -- in the `catch` block, instead of only setting the error state, also call `setData(generateMockData(days))` so the chart always renders
+
+4. **Track `isUsingMockData`** state -- boolean flag set to `true` when mock/fallback data is used, drives the "Demo Data" badge
+
+5. **Add jitter effect** -- same pattern as `usePrices`: when `demoMode` is active, run a 3-second interval that applies +/-0.5% random jitter to each point's value
+
+6. **"Demo Data" badge** -- render a small warning-styled badge (`border-warning/50 text-warning`) reading "Demo Data" when `isUsingMockData` is true, placed next to the gain/loss badge in the header
