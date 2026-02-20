@@ -9,8 +9,10 @@ import { useNetwork } from '@/hooks/useNetwork';
 import { useWallet } from '@/hooks/useWallet';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { truncateAddress } from '@/lib/formatters';
+import { requestPushPermission } from '@/lib/pushNotification';
 import { Sun, Moon, Monitor, Copy, LogOut, Check, Bell } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import type { Theme } from '@/types';
 
 const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
@@ -25,6 +27,25 @@ export default function SettingsPage() {
   const { wallet, disconnect } = useWallet();
   const { prefs, update: updatePrefs } = useNotificationPreferences();
   const [copied, setCopied] = useState(false);
+  const [pushPermission, setPushPermission] = useState<NotificationPermission>(
+    'Notification' in window ? Notification.permission : 'denied'
+  );
+  const supportsPush = 'Notification' in window;
+
+  const handlePushToggle = async (checked: boolean) => {
+    if (checked) {
+      const perm = await requestPushPermission();
+      setPushPermission(perm);
+      if (perm === 'granted') {
+        updatePrefs({ pushNotifications: true });
+      } else {
+        updatePrefs({ pushNotifications: false });
+        toast.error('Browser notifications blocked. Enable them in your browser settings.');
+      }
+    } else {
+      updatePrefs({ pushNotifications: false });
+    }
+  };
 
   const copyAddress = () => {
     if (wallet.address) {
@@ -130,6 +151,23 @@ export default function SettingsPage() {
               onCheckedChange={(checked) => updatePrefs({ transactionAlerts: checked })}
             />
           </div>
+          {supportsPush && (
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm flex items-center gap-2">
+                  Browser notifications
+                  <Badge variant="outline" className="text-[10px] font-normal">
+                    {pushPermission === 'granted' ? 'Granted' : pushPermission === 'denied' ? 'Denied' : 'Not asked'}
+                  </Badge>
+                </Label>
+                <p className="text-xs text-muted-foreground">Receive alerts even when this tab is in the background</p>
+              </div>
+              <Switch
+                checked={prefs.pushNotifications}
+                onCheckedChange={handlePushToggle}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 

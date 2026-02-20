@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { getNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { addNotification } from '@/lib/notificationHistory';
+import { sendPushNotification } from '@/lib/pushNotification';
 import { toast } from 'sonner';
 import type { PriceData } from '@/types';
 
@@ -24,6 +25,7 @@ export function usePriceAlerts(prices: PriceData[]) {
         const msg = `${emoji} ${p.symbol} is ${direction} ${abs.toFixed(1)}% in the last 24h`;
         toast(msg, { duration: 8000 });
         addNotification('price', msg);
+        sendPushNotification('sBTC Price Alert', msg);
       } else if (abs < priceThreshold) {
         // Reset so it can alert again if it crosses back
         alerted.current.delete(`${p.symbol}-up`);
