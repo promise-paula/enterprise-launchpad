@@ -55,3 +55,11 @@ export interface Transaction {
 export type TimeInterval = '1H' | '24H' | '7D' | '30D';
 
 export type Theme = 'light' | 'dark' | 'system';
+
+export interface PriceAlert {
+  id: string;
+  symbol: 'BTC' | 'sBTC';
+  direction: 'above' | 'below';
+  targetPrice: number;
+  createdAt: string;
+}

@@ -4,17 +4,20 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTheme } from '@/hooks/useTheme';
 import { useNetwork } from '@/hooks/useNetwork';
 import { useWallet } from '@/hooks/useWallet';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { useDemoMode } from '@/hooks/useDemoMode';
+import { useUserPriceAlerts } from '@/hooks/useUserPriceAlerts';
 import { truncateAddress } from '@/lib/formatters';
 import { requestPushPermission } from '@/lib/pushNotification';
-import { Sun, Moon, Monitor, Copy, LogOut, Check, Bell, FlaskConical } from 'lucide-react';
+import { Sun, Moon, Monitor, Copy, LogOut, Check, Bell, FlaskConical, Target, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import type { Theme } from '@/types';
+import type { Theme, PriceAlert } from '@/types';
 
 const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
   { value: 'light', label: 'Light', icon: Sun },
@@ -28,7 +31,11 @@ export default function SettingsPage() {
   const { wallet, disconnect } = useWallet();
   const { prefs, update: updatePrefs } = useNotificationPreferences();
   const { demoMode, setDemoMode } = useDemoMode();
+  const { alerts: priceAlerts, add: addPriceAlert, remove: removePriceAlert } = useUserPriceAlerts();
   const [copied, setCopied] = useState(false);
+  const [alertSymbol, setAlertSymbol] = useState<PriceAlert['symbol']>('BTC');
+  const [alertDirection, setAlertDirection] = useState<PriceAlert['direction']>('above');
+  const [alertPrice, setAlertPrice] = useState('');
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
     'Notification' in window ? Notification.permission : 'denied'
   );
@@ -189,6 +196,83 @@ export default function SettingsPage() {
                 checked={prefs.pushNotifications}
                 onCheckedChange={handlePushToggle}
               />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Price Alerts */}
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Target className="h-4 w-4" /> Price Alerts
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2 flex-wrap">
+            <Select value={alertSymbol} onValueChange={(v) => setAlertSymbol(v as PriceAlert['symbol'])}>
+              <SelectTrigger className="w-24">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="BTC">BTC</SelectItem>
+                <SelectItem value="sBTC">sBTC</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={alertDirection} onValueChange={(v) => setAlertDirection(v as PriceAlert['direction'])}>
+              <SelectTrigger className="w-24">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="above">Above</SelectItem>
+                <SelectItem value="below">Below</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              type="number"
+              placeholder="Price (USD)"
+              value={alertPrice}
+              onChange={(e) => setAlertPrice(e.target.value)}
+              className="flex-1 min-w-[120px]"
+            />
+            <Button
+              onClick={() => {
+                const price = parseFloat(alertPrice);
+                if (!price || price <= 0) {
+                  toast.error('Enter a valid price greater than 0');
+                  return;
+                }
+                addPriceAlert({ symbol: alertSymbol, direction: alertDirection, targetPrice: price });
+                setAlertPrice('');
+                toast.success(`Alert set: ${alertSymbol} ${alertDirection} $${price.toLocaleString()}`);
+              }}
+            >
+              Add
+            </Button>
+          </div>
+
+          {priceAlerts.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-3">No price alerts set</p>
+          ) : (
+            <div className="space-y-2">
+              {priceAlerts.map((alert) => (
+                <div key={alert.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <span className="text-sm">
+                    {alert.symbol} {alert.direction}{' '}
+                    <span className="font-mono font-medium">
+                      ${alert.targetPrice.toLocaleString()}
+                    </span>
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => removePriceAlert(alert.id)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
