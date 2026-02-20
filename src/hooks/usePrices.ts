@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { PriceData } from '@/types';
 import { fetchPrices, fetchMarketChart } from '@/lib/coingecko';
 import { toast } from 'sonner';
+import { useDemoMode } from './useDemoMode';
 
 const POLL_INTERVAL = 30_000;
 const SBTC_SPREAD = 0.9995; // sBTC trades ~0.05% below BTC
@@ -10,6 +11,7 @@ export function usePrices() {
   const [isLoading, setIsLoading] = useState(true);
   const [prices, setPrices] = useState<PriceData[]>([]);
   const [isLive, setIsLive] = useState(false);
+  const { demoMode } = useDemoMode();
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isStale, setIsStale] = useState(false);
   const hasErrored = useRef(false);
@@ -99,6 +101,24 @@ export function usePrices() {
     const id = window.setInterval(load, POLL_INTERVAL);
     return () => clearInterval(id);
   }, [load]);
+
+  // Demo mode: jitter prices every 3s
+  useEffect(() => {
+    if (!demoMode || prices.length === 0) return;
+    const id = window.setInterval(() => {
+      setPrices(prev =>
+        prev.map(p => {
+          const jitter = 1 + (Math.random() - 0.5) * 0.01;
+          return {
+            ...p,
+            price: p.price * jitter,
+            sparkline: p.sparkline?.map(v => v * jitter),
+          };
+        })
+      );
+    }, 3000);
+    return () => clearInterval(id);
+  }, [demoMode, prices.length]);
 
   const getPrice = (symbol: string) => prices.find(p => p.symbol === symbol);
 

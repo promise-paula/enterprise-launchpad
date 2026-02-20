@@ -8,9 +8,10 @@ import { useTheme } from '@/hooks/useTheme';
 import { useNetwork } from '@/hooks/useNetwork';
 import { useWallet } from '@/hooks/useWallet';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
+import { useDemoMode } from '@/hooks/useDemoMode';
 import { truncateAddress } from '@/lib/formatters';
 import { requestPushPermission } from '@/lib/pushNotification';
-import { Sun, Moon, Monitor, Copy, LogOut, Check, Bell } from 'lucide-react';
+import { Sun, Moon, Monitor, Copy, LogOut, Check, Bell, FlaskConical } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Theme } from '@/types';
@@ -26,6 +27,7 @@ export default function SettingsPage() {
   const { network, setNetwork } = useNetwork();
   const { wallet, disconnect } = useWallet();
   const { prefs, update: updatePrefs } = useNotificationPreferences();
+  const { demoMode, setDemoMode } = useDemoMode();
   const [copied, setCopied] = useState(false);
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
     'Notification' in window ? Notification.permission : 'denied'
@@ -100,6 +102,27 @@ export default function SettingsPage() {
                 {n}
               </Button>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Demo Mode */}
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <FlaskConical className="h-4 w-4" /> Demo Mode
+            {demoMode && <Badge className="text-[10px] font-normal ml-1">Active</Badge>}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm">Simulate price changes</Label>
+              <p className="text-xs text-muted-foreground">
+                Random ±0.5% jitter every 3s to preview flash animations and count-up effects
+              </p>
+            </div>
+            <Switch checked={demoMode} onCheckedChange={setDemoMode} />
           </div>
         </CardContent>
       </Card>
