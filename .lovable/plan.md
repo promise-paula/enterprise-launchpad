@@ -1,174 +1,84 @@
 
+# Phase 7: Micro-interactions and Polish
 
-# Phased Implementation Plan: Close All PRD Gaps
-
-## Current State Summary
-The app has a working dashboard with portfolio stats, price charts, holdings table, transaction history, notifications, and settings. However, many PRD requirements are missing or incomplete.
-
----
-
-## Phase 1: Quick Fixes (Low effort, high compliance)
-
-**1a. Change polling interval from 60s to 30s**
-- File: `src/hooks/usePrices.ts` -- change `POLL_INTERVAL` from `60_000` to `30_000`
-
-**1b. Change transaction pagination from 5 to 20 per page**
-- File: `src/pages/TransactionHistory.tsx` -- change `PAGE_SIZE` from `5` to `20`
-
-**1c. Wire explorer links to real Stacks explorer**
-- Files: `src/pages/TransactionHistory.tsx`, `src/pages/Dashboard.tsx`
-- Replace `href="#"` with `https://explorer.hiro.so/txid/{txHash}?chain=mainnet`
-
-**1d. Fix landing page secondary CTA text**
-- File: `src/pages/Index.tsx` -- change "View Demo" to "Learn More" per PRD section 17.1
-
-**1e. Show last 10 transactions on dashboard (not 6)**
-- File: `src/pages/Dashboard.tsx` -- change `transactions.slice(0, 6)` to `transactions.slice(0, 10)`
+## Overview
+Add three micro-interaction effects to enhance the dashboard UX: price flash animations when values change, animated count-up for the portfolio total value, and slide-in animations for transaction rows.
 
 ---
 
-## Phase 2: Sortable Holdings Table
+## 1. Price Flash Animation
 
-**Changes:**
-- File: `src/pages/Dashboard.tsx`
-- Add sort state (`sortColumn`, `sortDirection`) for the holdings table
-- Make table headers clickable with sort indicators (arrow icons)
-- Sort holdings array by the selected column (Token, Balance, Value, 24h Change)
-- Add token icons (inline SVG or emoji placeholders for BTC/STX)
-- Add empty state for zero holdings: icon + "No sBTC yet" + link to bridge
+**What it does:** When BTC/STX/sBTC prices update (every 30s poll), the price text briefly flashes green (price went up) or red (price went down) for ~600ms.
 
----
+**Implementation:**
+- Create a new hook `src/hooks/usePriceFlash.ts` that compares old vs new price values using `useRef` to track previous prices
+- Returns a CSS class name (`flash-green`, `flash-red`, or empty) per symbol
+- Add `@keyframes flash-green` and `@keyframes flash-red` to `src/index.css` -- a quick background-color highlight that fades out
+- Apply the flash class to the price `<p>` elements in `src/pages/Dashboard.tsx` for the BTC, STX, and sBTC stat cards
 
-## Phase 3: Error Handling and Resilience
+**New file:** `src/hooks/usePriceFlash.ts`
+- Accepts current prices array
+- Stores previous prices in a `useRef`
+- On each render where prices differ, sets flash direction per symbol
+- Auto-clears flash class after 600ms via `setTimeout`
 
-**3a. Create a React Error Boundary component**
-- New file: `src/components/ErrorBoundary.tsx`
-- Catches render errors, shows friendly UI with "Something went wrong" message and a Retry button
-- Wrap main content in `DashboardLayout` and the app root
+**CSS additions to `src/index.css`:**
+```css
+@keyframes flashGreen {
+  0% { background-color: hsl(142 76% 36% / 0.3); }
+  100% { background-color: transparent; }
+}
+@keyframes flashRed {
+  0% { background-color: hsl(0 84% 60% / 0.3); }
+  100% { background-color: transparent; }
+}
+.flash-green { animation: flashGreen 0.6s ease-out; }
+.flash-red { animation: flashRed 0.6s ease-out; }
+```
 
-**3b. Create structured error UI components**
-- New file: `src/components/ErrorState.tsx`
-- Reusable component: icon + message + retry button
-- Variants for different error types (API down, offline, rate limited)
-
-**3c. Add offline detection banner**
-- New file: `src/hooks/useOnlineStatus.ts` -- listens to `navigator.onLine` and `online`/`offline` events
-- New component: `src/components/OfflineBanner.tsx` -- sticky banner "You're offline. Showing cached data."
-- Add to `DashboardLayout`
-
-**3d. Add stale price warning**
-- File: `src/hooks/usePrices.ts` -- track `lastSuccessfulFetch` timestamp
-- File: `src/pages/Dashboard.tsx` / `PriceChart.tsx` -- if data is older than 5 minutes, show yellow warning badge "Price may be outdated"
-
-**3e. Add retry logic with exponential backoff**
-- File: `src/hooks/usePrices.ts` -- implement 3 retries (1s, 2s, 4s) before showing error state
-- Show manual retry button after all retries fail
+**Dashboard changes:** Apply flash class to the price value `<p>` tags for BTC, STX stat cards and sBTC balance card.
 
 ---
 
-## Phase 4: Accessibility (WCAG 2.1 AA)
+## 2. Balance Count-up Effect
 
-**4a. Skip-to-content link**
-- File: `src/components/layout/DashboardLayout.tsx`
-- Add visually hidden "Skip to main content" link that appears on focus, targeting `<main>` with `id="main-content"`
+**What it does:** When the portfolio total value changes (e.g., from $12,450 to $12,520), the number animates smoothly from old value to new value over ~500ms.
 
-**4b. ARIA live regions**
-- File: `src/pages/Dashboard.tsx`
-- Wrap portfolio value and price displays in `aria-live="polite"` regions so screen readers announce updates
+**Implementation:**
+- Create a new component `src/components/AnimatedNumber.tsx`
+- Uses `useRef` to store previous value, `useState` for displayed value, and `requestAnimationFrame` to interpolate
+- Accepts `value`, `duration` (default 500ms), and `formatter` function props
+- Eases with a simple ease-out curve
 
-**4c. ARIA labels on interactive elements**
-- Add `aria-label` to all icon-only buttons (theme toggle, copy address, sidebar trigger)
-- Add `aria-label` to wallet connect button, sort headers, filter buttons
-- Files: `DashboardLayout.tsx`, `Dashboard.tsx`, `TransactionHistory.tsx`, `Settings.tsx`
-
-**4d. Keyboard navigation improvements**
-- Ensure all interactive elements have visible focus indicators (already handled by Tailwind's `ring` utility but verify)
-- Add `role` and `aria-sort` attributes to sortable table headers
-- Ensure bottom mobile nav items are properly focusable
-
-**4e. Screen reader announcements**
-- Add `aria-busy="true"` to loading states
-- Announce errors with `aria-live="assertive"`
-- Announce wallet connect/disconnect events
+**Dashboard changes:** Replace the static `{formatUsd(portfolio.totalValue)}` in the Portfolio Value card with `<AnimatedNumber value={portfolio.totalValue} formatter={formatUsd} />`
 
 ---
 
-## Phase 5: Wallet Connection (Real Integration)
+## 3. Transaction Slide-in Animation
 
-**Note:** Real `@stacks/connect` integration requires the wallet browser extension to be installed. Since this is a Lovable-hosted app (iframe preview), real wallet signing won't work in the preview. The implementation will be structurally correct but testable only in a deployed environment.
+**What it does:** Each transaction row in the "Recent Transactions" list enters with a staggered slide-up animation when the list first renders.
 
-**5a. Install @stacks/connect dependency**
-- Add `@stacks/connect` package
+**Implementation:**
+- Use framer-motion's `motion.div` with `variants` on each transaction row in `src/pages/Dashboard.tsx`
+- Define item variants: `hidden: { opacity: 0, y: 20 }` and `visible: { opacity: 1, y: 0 }`
+- Wrap the transaction list in a framer-motion container with `staggerChildren: 0.05`
+- This leverages the existing `framer-motion` dependency already in the project
 
-**5b. Rewrite `src/hooks/useWallet.ts`**
-- Replace mock with real `showConnect()` from `@stacks/connect`
-- Support Leather and Xverse wallet detection
-- Persist session in localStorage
-- Handle error codes: `WALLET_NOT_FOUND`, `USER_REJECTED`, `CONNECTION_TIMEOUT`
-- Add `isConnecting` state
-
-**5c. Add wallet selection modal**
-- New file: `src/components/WalletModal.tsx`
-- Show Leather and Xverse options with install links if not detected
-- Connection status indicator (green dot)
-
-**5d. Update landing page CTA**
-- File: `src/pages/Index.tsx`
-- "Connect Wallet" button triggers the wallet modal instead of navigating to `/dashboard`
-
-**5e. Update DashboardLayout header**
-- Show wallet dropdown when connected (address, disconnect, network info)
-- Connection status green dot indicator
-
-**5f. Session persistence**
-- Store connected address and session in localStorage
-- Auto-reconnect on page load
-- Detect external disconnect within 5 seconds
+**Dashboard changes:** Wrap the transactions `.space-y-2` div in `motion.div` with stagger container variants, and wrap each transaction row in `motion.div` with item variants.
 
 ---
 
-## Phase 6: SEO and Meta Tags
+## Files Changed
 
-**6a. Add meta tags**
-- File: `index.html`
-- Add OpenGraph tags, Twitter card tags, descriptive title/description
-- Add semantic HTML improvements (`<main>`, `<nav>`, `<section>` where missing)
+| File | Change |
+|------|--------|
+| `src/hooks/usePriceFlash.ts` | New hook for detecting price direction changes |
+| `src/components/AnimatedNumber.tsx` | New component for count-up number animation |
+| `src/index.css` | Add `flash-green` and `flash-red` keyframe animations |
+| `src/pages/Dashboard.tsx` | Integrate all three effects: flash classes on prices, AnimatedNumber on portfolio value, motion.div on transactions |
 
----
-
-## Phase 7: Micro-interactions and Polish
-
-**7a. Price flash animation**
-- Add CSS keyframes `flash-green` and `flash-red` for price changes
-- Apply to price values when they update
-
-**7b. Balance count-up effect**
-- Animate portfolio value number when it changes (count from old to new value)
-
-**7c. New transaction slide-in**
-- First transaction in the list gets `slide-in-top` animation
-
----
-
-## Phase 8: Post-MVP Features (Future)
-
-These are documented but explicitly lower priority:
-- **F7: DeFi Position Tracking** (ALEX, Zest, BitFlow, StackingDAO)
-- **F8: Multi-Wallet Watch Mode** (add/label/aggregate wallets by address)
-- **F9: Portfolio Analytics** (value over time chart, allocation pie chart)
-
----
-
-## Implementation Order Recommendation
-
-Phases 1-4 can be done immediately and will have the most visible impact on PRD compliance. Phase 5 (wallet) is the most complex and will need deployment testing. Phases 6-7 are polish. Phase 8 is post-MVP.
-
-**Estimated scope per phase:**
-- Phase 1: ~5 file edits (small changes)
-- Phase 2: ~1 file edit (moderate)
-- Phase 3: ~3 new files + 3 edits (moderate)
-- Phase 4: ~5 file edits (moderate)
-- Phase 5: ~1 new package + 3 new files + 4 edits (large)
-- Phase 6: ~1 file edit (small)
-- Phase 7: ~2 file edits + CSS additions (small)
-
+## Technical Notes
+- The `usePriceFlash` hook uses a `key` state that increments to force re-triggering CSS animations even when the same direction flash occurs twice consecutively
+- `AnimatedNumber` cleans up `requestAnimationFrame` on unmount to prevent memory leaks
+- Transaction slide-in only runs on initial mount (not on re-renders) since `initial="hidden"` only fires once
+- All animations respect the existing design system colors (success/destructive HSL values)
