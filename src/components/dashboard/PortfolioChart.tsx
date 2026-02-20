@@ -7,6 +7,7 @@ import { fetchMarketChart } from '@/lib/coingecko';
 import { ErrorState } from '@/components/ErrorState';
 import { formatUsd } from '@/lib/formatters';
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import { useDemoMode } from '@/hooks/useDemoMode';
 import {
   AreaChart,
   Area,
@@ -19,7 +20,7 @@ import {
 
 const SBTC_BALANCE = 0.128567;
 const STX_BALANCE = 2450.50;
-const SBTC_RATIO = 0.9995; // sBTC/BTC peg ratio
+const SBTC_RATIO = 0.9995;
 
 type PortfolioInterval = '7D' | '30D';
 const intervals: PortfolioInterval[] = ['7D', '30D'];
@@ -28,6 +29,21 @@ const intervalToDays: Record<PortfolioInterval, number> = { '7D': 7, '30D': 30 }
 interface PortfolioPoint {
   timestamp: number;
   value: number;
+}
+
+function generateMockData(days: number): PortfolioPoint[] {
+  const points: PortfolioPoint[] = [];
+  const now = Date.now();
+  const totalMs = days * 24 * 60 * 60 * 1000;
+  const step = totalMs / 59;
+  let value = 9200;
+
+  for (let i = 0; i < 60; i++) {
+    value += (Math.random() - 0.48) * 40; // slight upward bias
+    value = Math.max(value, 8500);
+    points.push({ timestamp: now - totalMs + i * step, value });
+  }
+  return points;
 }
 
 function alignAndMerge(
@@ -70,28 +86,57 @@ export function PortfolioChart() {
   const [data, setData] = useState<PortfolioPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<'api' | 'rate-limited' | null>(null);
+  const [isUsingMockData, setIsUsingMockData] = useState(false);
+  const { demoMode } = useDemoMode();
 
   const loadChart = useCallback(async (intv: PortfolioInterval) => {
+    const days = intervalToDays[intv];
+
+    if (demoMode) {
+      setData(generateMockData(days));
+      setIsUsingMockData(true);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const days = intervalToDays[intv];
       const [btcData, stxData] = await Promise.all([
         fetchMarketChart('bitcoin', days),
         fetchMarketChart('blockstack', days),
       ]);
-      setData(alignAndMerge(btcData, stxData));
+      const merged = alignAndMerge(btcData, stxData);
+      setData(merged);
+      setIsUsingMockData(false);
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
       setError(msg.includes('Rate limited') ? 'rate-limited' : 'api');
+      setData(generateMockData(days));
+      setIsUsingMockData(true);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [demoMode]);
 
   useEffect(() => {
     loadChart(interval);
   }, [interval, loadChart]);
+
+  // Demo mode jitter
+  useEffect(() => {
+    if (!demoMode || data.length === 0) return;
+    const id = window.setInterval(() => {
+      setData(prev =>
+        prev.map(p => ({
+          ...p,
+          value: p.value * (1 + (Math.random() - 0.5) * 0.01),
+        }))
+      );
+    }, 3000);
+    return () => clearInterval(id);
+  }, [demoMode, data.length]);
 
   // Downsample to ~60 points
   const displayData = useMemo(() => {
@@ -138,6 +183,14 @@ export function PortfolioChart() {
               {gainLossPercent.toFixed(2)}%)
             </Badge>
           )}
+          {isUsingMockData && !loading && (
+            <Badge
+              variant="outline"
+              className="text-[10px] border-warning/50 text-warning"
+            >
+              Demo Data
+            </Badge>
+          )}
         </div>
         <div className="flex gap-1">
           {intervals.map((i) => (
@@ -160,7 +213,7 @@ export function PortfolioChart() {
           <ErrorState variant={error} onRetry={() => loadChart(interval)} />
         ) : (
           <>
-            {error && data.length > 0 && (
+            {error && !isUsingMockData && data.length > 0 && (
               <Badge
                 variant="outline"
                 className="mb-2 text-[10px] border-warning/50 text-warning"
