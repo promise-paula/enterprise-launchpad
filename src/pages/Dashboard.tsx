@@ -12,6 +12,7 @@ import { usePriceFlash } from '@/hooks/usePriceFlash';
 import { formatUsd, formatTokenAmount, formatChangePercent, formatRelativeTime, truncateAddress } from '@/lib/formatters';
 import { AnimatedNumber } from '@/components/AnimatedNumber';
 import { PriceChart } from '@/components/dashboard/PriceChart';
+import { PortfolioChart } from '@/components/dashboard/PortfolioChart';
 import { StaggerContainer } from '@/components/layout/StaggerContainer';
 import { StaggerItem } from '@/components/layout/StaggerItem';
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Clock, ExternalLink, ArrowUpDown, AlertTriangle, Coins } from 'lucide-react';
@@ -225,6 +226,13 @@ export default function Dashboard() {
       <StaggerContainer staggerDelay={0.1}>
         <StaggerItem>
           <PriceChart />
+        </StaggerItem>
+      </StaggerContainer>
+
+      {/* Portfolio Performance Chart */}
+      <StaggerContainer staggerDelay={0.1}>
+        <StaggerItem>
+          <PortfolioChart />
         </StaggerItem>
       </StaggerContainer>
 
