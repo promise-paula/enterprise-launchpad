@@ -1,4 +1,4 @@
-import { useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { NavLink } from '@/components/NavLink';
 import {
   Sidebar,
@@ -24,7 +24,13 @@ const items = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
-  const unread = getUnreadCount();
+  const [unread, setUnread] = useState(getUnreadCount);
+
+  useEffect(() => {
+    const sync = () => setUnread(getUnreadCount());
+    window.addEventListener('notification-change', sync);
+    return () => window.removeEventListener('notification-change', sync);
+  }, []);
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border/50">

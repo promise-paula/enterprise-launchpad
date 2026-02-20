@@ -9,6 +9,10 @@ export interface NotificationEntry {
 const STORAGE_KEY = 'notification-history';
 const MAX_ENTRIES = 100;
 
+function notifyChange() {
+  window.dispatchEvent(new CustomEvent('notification-change'));
+}
+
 function load(): NotificationEntry[] {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -31,6 +35,7 @@ export function addNotification(type: NotificationEntry['type'], message: string
     read: false,
   });
   save(entries.slice(0, MAX_ENTRIES));
+  notifyChange();
 }
 
 export function getNotifications(): NotificationEntry[] {
@@ -44,8 +49,10 @@ export function getUnreadCount(): number {
 export function markAllRead() {
   const entries = load().map(e => ({ ...e, read: true }));
   save(entries);
+  notifyChange();
 }
 
 export function clearHistory() {
   save([]);
+  notifyChange();
 }
