@@ -111,7 +111,7 @@ export default function LandingPage() {
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="text-base px-8">
-                <Link to="/dashboard">View Demo</Link>
+                <Link to="/dashboard">Learn More</Link>
               </Button>
             </motion.div>
           </motion.div>

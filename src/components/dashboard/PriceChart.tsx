@@ -37,7 +37,7 @@ function formatXLabel(timestamp: number, interval: TimeInterval): string {
 
 export function PriceChart() {
   const [interval, setInterval] = useState<TimeInterval>('24H');
-  const { isLive } = usePrices();
+  const { isLive, isStale } = usePrices();
   const [chartData, setChartData] = useState<MarketChartPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -77,6 +77,11 @@ export function PriceChart() {
           <Badge variant="outline" className={`text-[10px] ${isLive ? 'border-success/50 text-success' : 'border-muted-foreground/50 text-muted-foreground'}`}>
             {isLive ? '● Live' : '○ Offline'}
           </Badge>
+          {isStale && (
+            <Badge variant="outline" className="text-[10px] border-warning/50 text-warning">
+              ⚠ May be outdated
+            </Badge>
+          )}
         </div>
         <div className="flex gap-1">
           {intervals.map(i => (

@@ -1,5 +1,7 @@
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useSbtcBalance } from '@/hooks/useSbtcBalance';
@@ -9,7 +11,7 @@ import { formatUsd, formatTokenAmount, formatChangePercent, formatRelativeTime, 
 import { PriceChart } from '@/components/dashboard/PriceChart';
 import { StaggerContainer } from '@/components/layout/StaggerContainer';
 import { StaggerItem } from '@/components/layout/StaggerItem';
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Clock, ExternalLink } from 'lucide-react';
+import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Clock, ExternalLink, ArrowUpDown, AlertTriangle, Coins } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { NotificationProvider } from '@/components/notifications/NotificationProvider';
 import {
@@ -44,20 +46,80 @@ const txColor = {
   swap: 'text-primary',
 };
 
+const TOKEN_ICONS: Record<string, string> = {
+  sBTC: '₿',
+  STX: 'Ⓢ',
+  BTC: '₿',
+};
+
+type SortColumn = 'token' | 'balance' | 'value' | 'change';
+type SortDir = 'asc' | 'desc';
+
 export default function Dashboard() {
   const { portfolio, isLoading: portLoading } = usePortfolio();
   const { sbtcBalance, isLoading: sbtcLoading } = useSbtcBalance();
-  const { prices, isLoading: priceLoading } = usePrices();
+  const { prices, isLoading: priceLoading, isStale } = usePrices();
   const { transactions, isLoading: txLoading } = useTransactions();
+
+  const [sortCol, setSortCol] = useState<SortColumn>('value');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   const btc = prices.find(p => p.symbol === 'BTC');
   const stx = prices.find(p => p.symbol === 'STX');
   const isLoading = portLoading || sbtcLoading || priceLoading;
 
+  const handleSort = (col: SortColumn) => {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortCol(col);
+      setSortDir('desc');
+    }
+  };
+
+  const sortedHoldings = useMemo(() => {
+    if (!portfolio?.holdings) return [];
+    const holdings = [...portfolio.holdings];
+    const mul = sortDir === 'asc' ? 1 : -1;
+    holdings.sort((a, b) => {
+      switch (sortCol) {
+        case 'token': return mul * a.token.localeCompare(b.token);
+        case 'balance': return mul * (a.balance - b.balance);
+        case 'value': return mul * (a.value - b.value);
+        case 'change': return mul * (a.changePercent24h - b.changePercent24h);
+        default: return 0;
+      }
+    });
+    return holdings;
+  }, [portfolio?.holdings, sortCol, sortDir]);
+
+  const SortHeader = ({ col, label }: { col: SortColumn; label: string }) => (
+    <TableHead
+      className="text-right cursor-pointer select-none hover:text-foreground transition-colors"
+      onClick={() => handleSort(col)}
+      role="columnheader"
+      aria-sort={sortCol === col ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+      aria-label={`Sort by ${label}`}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        <ArrowUpDown className={`h-3 w-3 ${sortCol === col ? 'text-primary' : 'text-muted-foreground/50'}`} />
+      </span>
+    </TableHead>
+  );
+
   return (
     <div className="space-y-6">
       <NotificationProvider prices={prices} />
       <h1 className="text-2xl font-bold">Portfolio</h1>
+
+      {/* Stale price warning */}
+      {isStale && (
+        <div className="flex items-center gap-2 bg-warning/10 border border-warning/30 text-warning rounded-lg px-4 py-2 text-sm" role="alert">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          Prices may be outdated. Data hasn't been updated in over 5 minutes.
+        </div>
+      )}
 
       {/* Top stat cards */}
       <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -67,7 +129,7 @@ export default function Dashboard() {
             <StatSkeleton />
           ) : (
             <Card className="glass-card gradient-card sm:col-span-2 lg:col-span-1 h-full">
-              <CardContent className="p-6">
+              <CardContent className="p-6" aria-live="polite" aria-busy={isLoading}>
                 <p className="text-sm text-muted-foreground mb-1">Total Value</p>
                 <p className="text-3xl font-bold font-mono">{formatUsd(portfolio.totalValue)}</p>
                 <div className="flex items-center gap-2 mt-2">
@@ -109,7 +171,7 @@ export default function Dashboard() {
             <StatSkeleton />
           ) : (
             <Card className="glass-card h-full">
-              <CardContent className="p-6">
+              <CardContent className="p-6" aria-live="polite">
                 <p className="text-sm text-muted-foreground mb-1">Bitcoin</p>
                 <p className="text-2xl font-bold font-mono">{formatUsd(btc.price)}</p>
                 <Badge className={btc.changePercent24h >= 0 ? 'bg-success/15 text-success border-success/30 mt-2' : 'bg-destructive/15 text-destructive border-destructive/30 mt-2'}>
@@ -126,7 +188,7 @@ export default function Dashboard() {
             <StatSkeleton />
           ) : (
             <Card className="glass-card h-full">
-              <CardContent className="p-6">
+              <CardContent className="p-6" aria-live="polite">
                 <p className="text-sm text-muted-foreground mb-1">Stacks</p>
                 <p className="text-2xl font-bold font-mono">{formatUsd(stx.price)}</p>
                 <Badge className={stx.changePercent24h >= 0 ? 'bg-success/15 text-success border-success/30 mt-2' : 'bg-destructive/15 text-destructive border-destructive/30 mt-2'}>
@@ -154,8 +216,22 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               {isLoading || !portfolio ? (
-                <div className="space-y-3">
+                <div className="space-y-3" aria-busy="true">
                   {[1, 2].map(i => <Skeleton key={i} className="h-12 w-full" />)}
+                </div>
+              ) : sortedHoldings.length === 0 ? (
+                /* Empty state */
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="h-14 w-14 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+                    <Coins className="h-7 w-7 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-base font-semibold mb-1">No sBTC yet</h3>
+                  <p className="text-sm text-muted-foreground mb-4">Bridge your BTC to get started with sBTC.</p>
+                  <Button asChild variant="outline" size="sm">
+                    <a href="https://app.stacks.co/bridge" target="_blank" rel="noopener noreferrer">
+                      Go to Bridge
+                    </a>
+                  </Button>
                 </div>
               ) : (
                 <>
@@ -164,16 +240,34 @@ export default function Dashboard() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Token</TableHead>
-                          <TableHead className="text-right">Balance</TableHead>
-                          <TableHead className="text-right">Value</TableHead>
-                          <TableHead className="text-right">24h Change</TableHead>
+                          <TableHead
+                            className="cursor-pointer select-none hover:text-foreground transition-colors"
+                            onClick={() => handleSort('token')}
+                            role="columnheader"
+                            aria-sort={sortCol === 'token' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                            aria-label="Sort by Token"
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              Token
+                              <ArrowUpDown className={`h-3 w-3 ${sortCol === 'token' ? 'text-primary' : 'text-muted-foreground/50'}`} />
+                            </span>
+                          </TableHead>
+                          <SortHeader col="balance" label="Balance" />
+                          <SortHeader col="value" label="Value" />
+                          <SortHeader col="change" label="24h Change" />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {portfolio.holdings.map(h => (
+                        {sortedHoldings.map(h => (
                           <TableRow key={h.symbol}>
-                            <TableCell className="font-medium">{h.token} <span className="text-muted-foreground text-xs">({h.symbol})</span></TableCell>
+                            <TableCell className="font-medium">
+                              <span className="inline-flex items-center gap-2">
+                                <span className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold">
+                                  {TOKEN_ICONS[h.symbol] ?? h.symbol[0]}
+                                </span>
+                                {h.token} <span className="text-muted-foreground text-xs">({h.symbol})</span>
+                              </span>
+                            </TableCell>
                             <TableCell className="text-right font-mono">{formatTokenAmount(h.balance, h.symbol === 'STX' ? 2 : 8)}</TableCell>
                             <TableCell className="text-right font-mono">{formatUsd(h.value)}</TableCell>
                             <TableCell className="text-right">
@@ -188,11 +282,16 @@ export default function Dashboard() {
                   </div>
                   {/* Mobile cards */}
                   <div className="sm:hidden space-y-3">
-                    {portfolio.holdings.map(h => (
+                    {sortedHoldings.map(h => (
                       <div key={h.symbol} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                        <div>
-                          <p className="font-medium text-sm">{h.token}</p>
-                          <p className="text-xs text-muted-foreground font-mono">{formatTokenAmount(h.balance, h.symbol === 'STX' ? 2 : 8)} {h.symbol}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold">
+                            {TOKEN_ICONS[h.symbol] ?? h.symbol[0]}
+                          </span>
+                          <div>
+                            <p className="font-medium text-sm">{h.token}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{formatTokenAmount(h.balance, h.symbol === 'STX' ? 2 : 8)} {h.symbol}</p>
+                          </div>
                         </div>
                         <div className="text-right">
                           <p className="font-mono text-sm">{formatUsd(h.value)}</p>
@@ -222,12 +321,12 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               {txLoading ? (
-                <div className="space-y-3">
+                <div className="space-y-3" aria-busy="true">
                   {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full" />)}
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {transactions.slice(0, 6).map(tx => {
+                  {transactions.slice(0, 10).map(tx => {
                     const Icon = txIcon[tx.type];
                     return (
                       <div key={tx.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors">
