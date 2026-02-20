@@ -198,3 +198,14 @@
   0%, 100% { box-shadow: 0 0 20px hsl(var(--primary) / 0.3); }
   50% { box-shadow: 0 0 40px hsl(var(--primary) / 0.6); }
 }
+
+@keyframes flashGreen {
+  0% { background-color: hsl(var(--success) / 0.3); }
+  100% { background-color: transparent; }
+}
+@keyframes flashRed {
+  0% { background-color: hsl(var(--destructive) / 0.3); }
+  100% { background-color: transparent; }
+}
+.flash-green { animation: flashGreen 0.6s ease-out; }
+.flash-red { animation: flashRed 0.6s ease-out; }
