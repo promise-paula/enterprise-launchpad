@@ -1,84 +1,51 @@
 
-# Phase 7: Micro-interactions and Polish
 
-## Overview
-Add three micro-interaction effects to enhance the dashboard UX: price flash animations when values change, animated count-up for the portfolio total value, and slide-in animations for transaction rows.
+# Fix Price Chart Error Handling
 
----
+## Problem
+The CoinGecko `/market_chart` endpoint frequently fails (CORS/rate-limiting in the iframe environment), causing a generic "Failed to load chart data" toast with no recovery path. The chart shows a skeleton forever or goes blank.
 
-## 1. Price Flash Animation
+## Root Causes
+1. **No retry logic** in `PriceChart.tsx` -- a single failure immediately shows an error toast
+2. **No error state UI** -- the chart area is empty after a failure (just stops loading)
+3. **No fallback data** -- if the API is unreachable, there's nothing to show
+4. **Cache too short** -- `fetchMarketChart` cache expires every 30s, so stale-but-valid data is discarded quickly
 
-**What it does:** When BTC/STX/sBTC prices update (every 30s poll), the price text briefly flashes green (price went up) or red (price went down) for ~600ms.
+## Solution
 
-**Implementation:**
-- Create a new hook `src/hooks/usePriceFlash.ts` that compares old vs new price values using `useRef` to track previous prices
-- Returns a CSS class name (`flash-green`, `flash-red`, or empty) per symbol
-- Add `@keyframes flash-green` and `@keyframes flash-red` to `src/index.css` -- a quick background-color highlight that fades out
-- Apply the flash class to the price `<p>` elements in `src/pages/Dashboard.tsx` for the BTC, STX, and sBTC stat cards
+### 1. Add retry with exponential backoff to `fetchMarketChart` (`src/lib/coingecko.ts`)
+- Add a helper function `fetchWithRetry` that wraps fetch with 3 attempts (1s, 2s, 4s delays)
+- Apply it to the `fetchMarketChart` function
+- Extend cache lifetime to 5 minutes so cached data survives transient failures
 
-**New file:** `src/hooks/usePriceFlash.ts`
-- Accepts current prices array
-- Stores previous prices in a `useRef`
-- On each render where prices differ, sets flash direction per symbol
-- Auto-clears flash class after 600ms via `setTimeout`
+### 2. Add error state and retry button to `PriceChart.tsx`
+- Track an `error` state (with variant: `'api' | 'rate-limited' | null`)
+- On failure, show the existing `ErrorState` component inside the chart area with a Retry button
+- If cached data exists, show the chart with a subtle "May be outdated" warning instead of an error
+- Clear error state on successful load
 
-**CSS additions to `src/index.css`:**
-```css
-@keyframes flashGreen {
-  0% { background-color: hsl(142 76% 36% / 0.3); }
-  100% { background-color: transparent; }
-}
-@keyframes flashRed {
-  0% { background-color: hsl(0 84% 60% / 0.3); }
-  100% { background-color: transparent; }
-}
-.flash-green { animation: flashGreen 0.6s ease-out; }
-.flash-red { animation: flashRed 0.6s ease-out; }
-```
-
-**Dashboard changes:** Apply flash class to the price value `<p>` tags for BTC, STX stat cards and sBTC balance card.
-
----
-
-## 2. Balance Count-up Effect
-
-**What it does:** When the portfolio total value changes (e.g., from $12,450 to $12,520), the number animates smoothly from old value to new value over ~500ms.
-
-**Implementation:**
-- Create a new component `src/components/AnimatedNumber.tsx`
-- Uses `useRef` to store previous value, `useState` for displayed value, and `requestAnimationFrame` to interpolate
-- Accepts `value`, `duration` (default 500ms), and `formatter` function props
-- Eases with a simple ease-out curve
-
-**Dashboard changes:** Replace the static `{formatUsd(portfolio.totalValue)}` in the Portfolio Value card with `<AnimatedNumber value={portfolio.totalValue} formatter={formatUsd} />`
-
----
-
-## 3. Transaction Slide-in Animation
-
-**What it does:** Each transaction row in the "Recent Transactions" list enters with a staggered slide-up animation when the list first renders.
-
-**Implementation:**
-- Use framer-motion's `motion.div` with `variants` on each transaction row in `src/pages/Dashboard.tsx`
-- Define item variants: `hidden: { opacity: 0, y: 20 }` and `visible: { opacity: 1, y: 0 }`
-- Wrap the transaction list in a framer-motion container with `staggerChildren: 0.05`
-- This leverages the existing `framer-motion` dependency already in the project
-
-**Dashboard changes:** Wrap the transactions `.space-y-2` div in `motion.div` with stagger container variants, and wrap each transaction row in `motion.div` with item variants.
-
----
+### 3. Suppress duplicate toast spam
+- Remove the `toast.error` call from `PriceChart` (the inline `ErrorState` replaces it)
+- This prevents repeated toast popups every 30s when the API is persistently down
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/hooks/usePriceFlash.ts` | New hook for detecting price direction changes |
-| `src/components/AnimatedNumber.tsx` | New component for count-up number animation |
-| `src/index.css` | Add `flash-green` and `flash-red` keyframe animations |
-| `src/pages/Dashboard.tsx` | Integrate all three effects: flash classes on prices, AnimatedNumber on portfolio value, motion.div on transactions |
+| `src/lib/coingecko.ts` | Add `fetchWithRetry` helper, increase chart cache TTL to 5 min, apply retry to `fetchMarketChart` |
+| `src/components/dashboard/PriceChart.tsx` | Add `error` state, show `ErrorState` component on failure with retry button, show stale warning when using cached data |
 
-## Technical Notes
-- The `usePriceFlash` hook uses a `key` state that increments to force re-triggering CSS animations even when the same direction flash occurs twice consecutively
-- `AnimatedNumber` cleans up `requestAnimationFrame` on unmount to prevent memory leaks
-- Transaction slide-in only runs on initial mount (not on re-renders) since `initial="hidden"` only fires once
-- All animations respect the existing design system colors (success/destructive HSL values)
+## Technical Details
+
+**`src/lib/coingecko.ts` changes:**
+- New `CHART_CACHE_TTL = 300_000` (5 min) constant for chart cache, separate from the price polling interval
+- Retry loop inside `fetchMarketChart`: up to 3 attempts with `Math.pow(2, attempt) * 1000` ms delay
+- On all retries exhausted, still fall back to cached data if available (even if expired)
+
+**`src/components/dashboard/PriceChart.tsx` changes:**
+- Add `error` state: `useState<'api' | 'rate-limited' | null>(null)`
+- In `loadChart` catch block: detect rate-limit (check error message) vs generic API error, set error state accordingly
+- Render logic: if `error && chartData.length === 0` show `ErrorState` with retry; if `error && chartData.length > 0` show chart with stale badge
+- Import `ErrorState` component
+- Remove `toast.error` call
+
