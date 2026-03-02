@@ -1,46 +1,50 @@
 
 
-# Add Breadcrumb Navigation to Dashboard Pages
+# Add Proper Navigation to Both Landing Page and Dashboard
 
-## Overview
-Add a breadcrumb component below the header and above each page's title across all dashboard routes, using the existing `Breadcrumb` UI components already in the project.
-
-## Approach
-Create a reusable `DashboardBreadcrumb` component that reads the current route via `useLocation` and renders the appropriate breadcrumb trail. Place it in the `DashboardLayout` just above the `<Outlet />` so it appears on every dashboard page automatically.
-
-## Route-to-Breadcrumb Mapping
-
-| Route | Breadcrumb |
-|-------|-----------|
-| `/dashboard` | Home > **Dashboard** |
-| `/dashboard/history` | Home > Dashboard > **Transaction History** |
-| `/dashboard/notifications` | Home > Dashboard > **Notifications** |
-| `/settings` | Home > **Settings** |
+## Problem
+1. The landing page (`/`) header only has the logo, theme toggle, and "Connect Wallet" button -- no navigation links to Dashboard, History, Settings, etc.
+2. The breadcrumb component exists in the dashboard layout but both areas need improvements for a complete navigation experience.
 
 ## Changes
 
-### 1. New file: `src/components/layout/DashboardBreadcrumb.tsx`
-- Uses `useLocation` to determine current path
-- Maps routes to labels
-- Uses the existing `Breadcrumb`, `BreadcrumbList`, `BreadcrumbItem`, `BreadcrumbLink`, `BreadcrumbSeparator`, `BreadcrumbPage` components from `src/components/ui/breadcrumb.tsx`
-- "Home" links to `/`, "Dashboard" links to `/dashboard`, current page is bold plain text
-- Separator uses `ChevronRight` (the default from the breadcrumb component, which renders as `>`)
-- Styled with `text-sm text-muted-foreground` for subtle appearance
+### 1. Update Landing Page Header (`src/pages/Index.tsx`)
 
-### 2. Edit: `src/components/layout/DashboardLayout.tsx`
-- Import `DashboardBreadcrumb`
-- Place `<DashboardBreadcrumb />` inside the `<main>` tag, just before `<Outlet />`, so it sits below the header and above each page's content
+Add navigation links to the landing page's top fixed header, between the logo and the right-side buttons:
+
+- Add nav links: **Dashboard**, **Features** (anchor to `#features`), **Docs** (external link)
+- On mobile, these collapse or show as a compact set
+- Style: `text-sm text-muted-foreground hover:text-foreground` to stay subtle and match the dark theme
+
+**Updated header structure:**
+```text
+[ Logo: sBTC Tracker ]   [ Dashboard | Features | Docs ]   [ Theme Toggle ] [ Connect Wallet ]
+```
+
+- "Dashboard" links to `/dashboard`
+- "Features" scrolls to `#features` section on the page
+- "Docs" links externally to `https://docs.stacks.co`
+- On small screens, only show the icon-based or abbreviated links to avoid crowding
+
+### 2. Enhance Dashboard Header (`src/components/layout/DashboardLayout.tsx`)
+
+Add the app name/logo text to the dashboard header so it feels like a proper navbar (currently only shows the logo icon on mobile and the sidebar trigger on desktop):
+
+- Make the logo/brand area clickable, linking back to `/` (Home)
+- Add a visible "sBTC Tracker" label on desktop next to the sidebar trigger so the header isn't mostly empty on the left side
+
+### 3. Breadcrumb remains as-is
+
+The `DashboardBreadcrumb` component is already correctly placed in the layout and renders the `Home > Dashboard > [Current Page]` trail. No changes needed there.
 
 ## Technical Details
 
-The breadcrumb component will define a simple route map:
+**File: `src/pages/Index.tsx`** (lines 62-84)
+- Insert a `<nav>` element between the logo `<div>` and the right-side button group
+- Contains `<Link to="/dashboard">Dashboard</Link>`, `<a href="#features">Features</a>`, and an external docs link
+- Hidden on very small screens (`hidden sm:flex`) to avoid crowding, since "Connect Wallet" already links to `/dashboard`
 
-```text
-/dashboard            -> "Dashboard"
-/dashboard/history    -> "Transaction History"  
-/dashboard/notifications -> "Notifications"
-/settings             -> "Settings"
-```
-
-For sub-pages (history, notifications), "Dashboard" becomes a clickable link. For top-level pages (dashboard, settings), the page name is rendered as bold, non-clickable text. All links use `react-router-dom`'s `Link` component via the `asChild` pattern on `BreadcrumbLink`.
+**File: `src/components/layout/DashboardLayout.tsx`** (lines 64-71)
+- Wrap the existing mobile logo in a `<Link to="/">` so tapping it navigates home
+- Add "sBTC Tracker" text visible on desktop (`hidden md:inline`) next to the sidebar trigger for brand presence
 
