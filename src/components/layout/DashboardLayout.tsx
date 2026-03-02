@@ -12,6 +12,7 @@ import {
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { DashboardBreadcrumb } from '@/components/layout/DashboardBreadcrumb';
 import {
   Sun,
   Moon,
@@ -112,6 +113,7 @@ export default function DashboardLayout() {
           {/* Main content */}
           <main id="main-content" className="flex-1 p-4 md:p-6 pb-20 md:pb-6" role="main">
             <ErrorBoundary>
+              <DashboardBreadcrumb />
               <Outlet />
             </ErrorBoundary>
           </main>
