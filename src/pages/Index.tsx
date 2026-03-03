@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { usePrices } from '@/hooks/usePrices';
 import { useTheme } from '@/hooks/useTheme';
 import { formatUsd, formatChangePercent } from '@/lib/formatters';
@@ -19,6 +20,8 @@ import {
   Github,
   Twitter,
   FileText,
+  Menu,
+  X,
 } from 'lucide-react';
 
 const features = [
@@ -52,15 +55,15 @@ const heroItemVariants = {
 export default function LandingPage() {
   const { prices, isLoading } = usePrices();
   const { theme, setTheme } = useTheme();
-
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const btc = prices.find(p => p.symbol === 'BTC');
   const stx = prices.find(p => p.symbol === 'STX');
 
   return (
     <div className="min-h-screen bg-gradient-hero scroll-smooth">
       {/* Nav */}
-      <header className="fixed top-0 inset-x-0 z-50 h-16 glass-card border-b border-border/50">
-        <div className="container flex items-center justify-between h-full">
+      <header className="fixed top-0 inset-x-0 z-50 glass-card border-b border-border/50">
+        <div className="container flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
               <span className="text-sm font-bold text-primary-foreground">₿</span>
@@ -81,11 +84,40 @@ export default function LandingPage() {
             >
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <Button asChild className="bg-gradient-primary hover:opacity-90 animate-pulse-glow">
+            <Button asChild className="bg-gradient-primary hover:opacity-90 animate-pulse-glow hidden sm:inline-flex">
               <Link to="/dashboard">Connect Wallet</Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="sm:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
         </div>
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="sm:hidden overflow-hidden border-t border-border/50"
+            >
+              <div className="container flex flex-col gap-3 py-4">
+                <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2" onClick={() => setMobileMenuOpen(false)}>Dashboard</Link>
+                <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2" onClick={() => setMobileMenuOpen(false)}>Features</a>
+                <a href="https://docs.stacks.co" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2">Docs</a>
+                <Button asChild className="bg-gradient-primary hover:opacity-90 w-full mt-1">
+                  <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>Connect Wallet</Link>
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
       <main>
