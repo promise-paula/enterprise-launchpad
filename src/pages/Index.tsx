@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { formatUsd, formatChangePercent } from '@/lib/formatters';
 import { StaggerContainer } from '@/components/layout/StaggerContainer';
 import { StaggerItem } from '@/components/layout/StaggerItem';
+import { cn } from '@/lib/utils';
 import {
   BarChart3,
   Layers,
@@ -56,8 +57,26 @@ export default function LandingPage() {
   const { prices, isLoading } = usePrices();
   const { theme, setTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<string>('');
   const btc = prices.find(p => p.symbol === 'BTC');
   const stx = prices.find(p => p.symbol === 'STX');
+
+  useEffect(() => {
+    const el = document.getElementById('features');
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setActiveSection(entry.isIntersecting ? 'features' : ''),
+      { threshold: 0.3 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const scrollToFeatures = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setMobileMenuOpen(false);
+    document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-hero scroll-smooth">
@@ -72,7 +91,7 @@ export default function LandingPage() {
           </div>
           <nav className="hidden sm:flex items-center gap-6">
             <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Dashboard</Link>
-            <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
+            <a href="#features" onClick={scrollToFeatures} className={cn("text-sm transition-colors", activeSection === 'features' ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground")}>Features</a>
             <a href="https://docs.stacks.co" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Docs</a>
           </nav>
           <div className="flex items-center gap-3">
@@ -109,7 +128,7 @@ export default function LandingPage() {
             >
               <div className="container flex flex-col gap-3 py-4">
                 <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2" onClick={() => setMobileMenuOpen(false)}>Dashboard</Link>
-                <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2" onClick={() => setMobileMenuOpen(false)}>Features</a>
+                <a href="#features" onClick={scrollToFeatures} className={cn("text-sm transition-colors py-2", activeSection === 'features' ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground")}>Features</a>
                 <a href="https://docs.stacks.co" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2">Docs</a>
                 <Button asChild className="bg-gradient-primary hover:opacity-90 w-full mt-1">
                   <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>Connect Wallet</Link>
@@ -147,8 +166,8 @@ export default function LandingPage() {
                   Connect Wallet <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="text-base px-8">
-                <a href="#features">Learn More</a>
+              <Button variant="outline" size="lg" className="text-base px-8" onClick={scrollToFeatures}>
+                Learn More
               </Button>
             </motion.div>
           </motion.div>
