@@ -63,12 +63,12 @@ export default function DashboardLayout() {
           {/* Header */}
           <header className="sticky top-0 z-40 h-16 glass-card border-b border-border/50 flex items-center px-4 gap-3">
             <SidebarTrigger className="hidden md:inline-flex" aria-label="Toggle sidebar" />
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-gradient-primary flex items-center justify-center md:hidden">
+            <Link to="/" className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-gradient-primary flex items-center justify-center">
                 <span className="text-xs font-bold text-primary-foreground">₿</span>
               </div>
-              <span className="font-bold md:hidden">sBTC</span>
-            </div>
+              <span className="font-bold text-sm">sBTC Tracker</span>
+            </Link>
 
             <div className="ml-auto flex items-center gap-2">
               <Badge

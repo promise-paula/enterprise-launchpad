@@ -67,6 +67,11 @@ export default function LandingPage() {
             </div>
             <span className="font-bold text-lg">sBTC Tracker</span>
           </div>
+          <nav className="hidden sm:flex items-center gap-6">
+            <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Dashboard</Link>
+            <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
+            <a href="https://docs.stacks.co" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Docs</a>
+          </nav>
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
