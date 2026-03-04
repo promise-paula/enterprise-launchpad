@@ -19,6 +19,7 @@ import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, 
 import { Link } from 'react-router-dom';
 import { NotificationProvider } from '@/components/notifications/NotificationProvider';
 import { ErrorState } from '@/components/ErrorState';
+import { PageTransition } from '@/components/layout/PageTransition';
 import {
   Table,
   TableBody,
@@ -124,6 +125,7 @@ export default function Dashboard() {
   );
 
   return (
+    <PageTransition>
     <div className="space-y-6">
       <NotificationProvider prices={prices} />
       <h1 className="text-2xl font-bold">Portfolio</h1>
@@ -403,5 +405,6 @@ export default function Dashboard() {
         </StaggerItem>
       </StaggerContainer>
     </div>
+    </PageTransition>
   );
 }

@@ -13,6 +13,7 @@ import DemoModeCard from '@/components/settings/DemoModeCard';
 import NotificationsCard from '@/components/settings/NotificationsCard';
 import PriceAlertsCard from '@/components/settings/PriceAlertsCard';
 import WalletCard from '@/components/settings/WalletCard';
+import { PageTransition } from '@/components/layout/PageTransition';
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -42,7 +43,8 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+    <PageTransition>
+    <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold">Settings</h1>
       <AppearanceCard theme={theme} setTheme={setTheme} />
       <NetworkCard network={network} setNetwork={setNetwork} />
@@ -57,5 +59,6 @@ export default function SettingsPage() {
       <PriceAlertsCard alerts={priceAlerts} addAlert={addPriceAlert} removeAlert={removePriceAlert} updateAlert={updatePriceAlert} resetCount={resetPriceAlertCount} />
       <WalletCard wallet={wallet} disconnect={disconnect} />
     </div>
+    </PageTransition>
   );
 }
