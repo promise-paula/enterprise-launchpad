@@ -11,6 +11,7 @@ import {
   clearHistory,
   type NotificationEntry,
 } from '@/lib/notificationHistory';
+import { PageTransition } from '@/components/layout/PageTransition';
 import {
   TrendingUp,
   TrendingDown,
@@ -43,6 +44,7 @@ export default function NotificationHistory() {
   }, []);
 
   return (
+    <PageTransition>
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -90,5 +92,6 @@ export default function NotificationHistory() {
         </StaggerContainer>
       )}
     </div>
+    </PageTransition>
   );
 }

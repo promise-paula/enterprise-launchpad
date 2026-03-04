@@ -10,6 +10,7 @@ import { formatUsd, formatChangePercent } from '@/lib/formatters';
 import { StaggerContainer } from '@/components/layout/StaggerContainer';
 import { StaggerItem } from '@/components/layout/StaggerItem';
 import { cn } from '@/lib/utils';
+import { PageTransition } from '@/components/layout/PageTransition';
 import {
   BarChart3,
   Layers,
@@ -81,6 +82,7 @@ export default function LandingPage() {
   };
 
   return (
+    <PageTransition>
     <div className="min-h-screen bg-gradient-hero scroll-smooth">
       {/* Nav */}
       <header className="fixed top-0 inset-x-0 z-50 glass-card border-b border-border/50">
@@ -274,5 +276,6 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
+    </PageTransition>
   );
 }
