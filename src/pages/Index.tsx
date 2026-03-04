@@ -75,7 +75,9 @@ export default function LandingPage() {
   const scrollToFeatures = (e: React.MouseEvent) => {
     e.preventDefault();
     setMobileMenuOpen(false);
-    document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => {
+      document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+    }, 300);
   };
 
   return (
