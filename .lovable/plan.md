@@ -1,28 +1,26 @@
 
 
-# Fix: Mobile Menu Smooth Scroll Timing
+# Page Transition Animations
 
-## Problem
-On mobile, clicking "Features" in the hamburger menu closes the menu but doesn't scroll to the Features section. The `scrollIntoView` call fires simultaneously with the menu closing animation (`AnimatePresence`), causing the scroll to be lost.
+## Approach
 
-## Fix
+A `PageTransition` component already exists but isn't used. The fix is to wrap each route's page content with it and add `AnimatePresence` in `App.tsx` keyed to the current location.
 
-**File: `src/pages/Index.tsx`** (line 75-79)
+## Changes
 
-Delay the `scrollIntoView` call by ~300ms using `setTimeout` so the menu exit animation completes first:
+### 1. `src/App.tsx`
+- Import `AnimatePresence` from `framer-motion` and `useLocation` from `react-router-dom`
+- Extract routes into a child component that calls `useLocation()` (must be inside `BrowserRouter`)
+- Wrap `<Routes>` with `<AnimatePresence mode="wait">` keyed by `location.pathname`
+- Pass `location` to `<Routes location={location}>`
 
-```ts
-const scrollToFeatures = (e: React.MouseEvent) => {
-  e.preventDefault();
-  setMobileMenuOpen(false);
-  setTimeout(() => {
-    document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
-  }, 300);
-};
-```
+### 2. Wrap pages with `PageTransition`
+- `src/pages/Index.tsx` — wrap return JSX in `<PageTransition>`
+- `src/pages/Dashboard.tsx` — wrap return JSX in `<PageTransition>`
+- `src/pages/TransactionHistory.tsx` — wrap in `<PageTransition>`
+- `src/pages/Settings.tsx` — wrap in `<PageTransition>`
+- `src/pages/NotificationHistory.tsx` — wrap in `<PageTransition>`
+- `src/pages/NotFound.tsx` — wrap in `<PageTransition>`
 
-This is a single-line change wrapping the existing `scrollIntoView` in a `setTimeout`. Desktop behavior remains unaffected since the menu isn't open on desktop.
+Each page just gets an import and a wrapper — the `PageTransition` component handles the fade+slide animation on mount/unmount.
 
-## Verification
-- Desktop: smooth scroll and active state highlight -- already confirmed working
-- Mobile: menu closure -- confirmed working; smooth scroll needs the timing fix above
